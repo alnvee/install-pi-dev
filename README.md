@@ -7,7 +7,7 @@ This repository contains the `.pi` bundle and an installer that:
 3. Copies the repository `.pi` folder to `~/.pi`.
 4. Installs the packages listed in `.pi/settings.json` with `pi install`.
 
-When you run the script from a local checkout, it uses the checkout’s `.pi` directory. When you stream it with `curl | sh`, set `PI_INSTALL_REPO_URL` to the GitHub repo root that contains this bundle so the script can download the current archive and pick up changes to `.pi` on every install.
+When you run the script from a local checkout, it uses the checkout’s `.pi` directory. When you stream it with `curl | sh`, it downloads the current `main` branch archive from `alnvee/install-pi-dev` so changes to `.pi` are picked up on every install.
 
 ## Usage
 
@@ -20,6 +20,11 @@ sh ./install.sh
 From the published installer:
 
 ```sh
-PI_INSTALL_REPO_URL=https://github.com/OWNER/REPO \
-	curl -fsSL https://pi.dev/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/alnvee/install-pi-dev/main/install.sh | sh
+```
+
+To verify the install flow without touching your real home directory:
+
+```sh
+./scripts/smoke-test.sh
 ```

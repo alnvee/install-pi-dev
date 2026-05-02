@@ -3,7 +3,7 @@
 set -eu
 
 SCRIPT_NAME=$(basename "$0")
-REPO_URL=${PI_INSTALL_REPO_URL:-}
+REPO_URL=${PI_INSTALL_REPO_URL:-https://github.com/alnvee/install-pi-dev}
 REPO_BRANCH=${PI_INSTALL_REPO_BRANCH:-main}
 
 log() {
@@ -86,17 +86,11 @@ install_pi_packages() {
 
   (
     cd "$HOME"
-    set -f
-    old_ifs=$IFS
-    IFS=$(printf '\n')
-
-    for package in $(printf '%s\n' "$packages"); do
+    printf '%s\n' "$packages" | while IFS= read -r package; do
       [ -n "$package" ] || continue
       log "Installing Pi package: $package"
       pi install "$package"
     done
-
-    IFS=$old_ifs
   )
 }
 
