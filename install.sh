@@ -88,10 +88,20 @@ install_pi_packages() {
     cd "$HOME"
     printf '%s\n' "$packages" | while IFS= read -r package; do
       [ -n "$package" ] || continue
+      log "Uninstalling Pi package: $package"
+      pi uninstall "$package" >/dev/null 2>&1 || true
+
       log "Installing Pi package: $package"
       pi install "$package"
     done
   )
+}
+
+refresh_pi_packages() {
+  command -v pi >/dev/null 2>&1 || die "pi command not found after installation"
+
+  log "Refreshing Pi packages to the latest versions"
+  pi update
 }
 
 main() {
@@ -104,13 +114,13 @@ main() {
   [ -f "$settings_path" ] || die "missing .pi/settings.json in $source_dir"
 
   log "Removing existing Pi CLI package"
-  npm uninstall -g @mariozechner/pi-coding-agent pi-coding-agent >/dev/null 2>&1 || true
+  npm uninstall -g @mariozechner/pi-coding-agent @earendil-works/pi-coding-agent pi-coding-agent >/dev/null 2>&1 || true
 
   log "Removing existing Pi home directory"
   rm -rf "$HOME/.pi"
 
   log "Installing Pi CLI package"
-  npm install -g @mariozechner/pi-coding-agent
+  npm install -g @earendil-works/pi-coding-agent
 
   target_dir="$HOME/.pi"
   log "Copying Pi bundle to $target_dir"
@@ -118,6 +128,7 @@ main() {
   cp -R "$source_dir/.pi" "$target_dir"
 
   install_pi_packages "$target_dir/settings.json"
+  refresh_pi_packages
 
   log "Pi installation complete"
 }

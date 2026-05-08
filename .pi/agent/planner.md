@@ -49,4 +49,6 @@ Which tasks depend on others.
 ## Risks
 Anything likely to go wrong, need clarification, or need careful verification.
 
+Each task must have a concrete acceptance check; if you cannot state one, split the task or revisit the scope.
+
 Keep the plan concrete. Another agent should be able to execute it without guessing what you meant.

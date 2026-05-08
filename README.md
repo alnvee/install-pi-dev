@@ -3,9 +3,9 @@
 This repository contains the `.pi` bundle and an installer that:
 
 1. Removes the existing Pi CLI and the current `~/.pi` directory.
-2. Installs `@mariozechner/pi-coding-agent` globally with `npm`.
+2. Installs `@earendil-works/pi-coding-agent` globally with `npm`.
 3. Copies the repository `.pi` folder to `~/.pi`.
-4. Installs the packages listed in `.pi/settings.json` with `pi install`.
+4. Uninstalls and reinstalls the packages listed in `.pi/settings.json` with `pi`, then runs `pi update` so the latest versions are fetched on each run.
 
 When you run the script from a local checkout, it uses the checkout’s `.pi` directory. When you stream it with `curl | sh`, it downloads the current `main` branch archive from `alnvee/install-pi-dev` so changes to `.pi` are picked up on every install.
 

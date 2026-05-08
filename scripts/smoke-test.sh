@@ -34,8 +34,8 @@ chmod +x "$TMP_BIN/npm" "$TMP_BIN/pi"
 PATH="$TMP_BIN:$PATH" HOME="$TMP_HOME" PI_INSTALL_SOURCE_DIR="$ROOT_DIR" sh "$ROOT_DIR/install.sh"
 
 test -f "$TMP_HOME/.pi/settings.json"
-test -f "$TMP_HOME/.pi/agents/planner.md"
-test -f "$TMP_HOME/.pi/prompts/pr.md"
+test -f "$TMP_HOME/.pi/agent/AGENTS.md"
+test -f "$TMP_HOME/.pi/agent/planner.md"
 
 expected_packages=$(node -e '
 const fs = require("fs");
@@ -43,11 +43,14 @@ const settings = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
 process.stdout.write((settings.packages || []).join("\n"));
 ' "$ROOT_DIR/.pi/settings.json")
 
-grep -Fx 'uninstall -g @mariozechner/pi-coding-agent pi-coding-agent' "$NPM_LOG" >/dev/null
-grep -Fx 'install -g @mariozechner/pi-coding-agent' "$NPM_LOG" >/dev/null
+grep -Fx 'uninstall -g @mariozechner/pi-coding-agent @earendil-works/pi-coding-agent pi-coding-agent' "$NPM_LOG" >/dev/null
+grep -Fx 'install -g @earendil-works/pi-coding-agent' "$NPM_LOG" >/dev/null
 
 for package in $expected_packages; do
+  grep -Fx "uninstall $package" "$PI_LOG" >/dev/null
   grep -Fx "install $package" "$PI_LOG" >/dev/null
 done
+
+grep -Fx 'update' "$PI_LOG" >/dev/null
 
 printf '%s\n' "Smoke test passed"
