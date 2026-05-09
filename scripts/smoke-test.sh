@@ -24,6 +24,9 @@ trap cleanup EXIT INT TERM
 
 mkdir -p "$TMP_HOME_NO_DOCKER" "$TMP_BIN_NO_DOCKER" "$TMP_HOME_DOCKER" "$TMP_BIN_DOCKER"
 
+test -f "$ROOT_DIR/.env"
+grep -Eq '^NOTEBOOKLM_NOTEBOOK_URL=https://notebooklm\.google\.com/notebook/[^[:space:]]+$' "$ROOT_DIR/.env"
+
 cat > "$TMP_BIN_NO_DOCKER/npm" <<EOF
 #!/bin/sh
 printf '%s\n' "\$*" >> "$NPM_LOG_NO_DOCKER"
@@ -77,6 +80,14 @@ EOF
 
 cat > "$TMP_BIN_DOCKER/docker" <<EOF
 #!/bin/sh
+case "\$*" in
+  'mcp tools ls --format human')
+    printf '%s\n' '59: - notebook_describe - Get AI-generated notebook summary with suggested topics.'
+    printf '%s\n' '70: - notebooklm_login -'
+    printf '%s\n' '85: - source_describe - Get AI-generated source summary with keyword chips.'
+    exit 0
+    ;;
+esac
 printf '%s\n' "\$*" >> "$DOCKER_LOG"
 exit 0
 EOF
@@ -96,6 +107,7 @@ python -m py_compile "$ROOT_DIR/docker/notebooklm-auth/server.py"
 
 grep -Fx "build --tag notebooklm/notebooklm-mcp:latest --file $ROOT_DIR/docker/notebooklm-mcp/Dockerfile $ROOT_DIR" "$DOCKER_LOG" >/dev/null
 grep -Fx "build --tag notebooklm/notebooklm-auth:latest --file $ROOT_DIR/docker/notebooklm-auth/Dockerfile $ROOT_DIR" "$DOCKER_LOG" >/dev/null
+grep -Fx "mcp profile server add default --server file://$TMP_HOME_DOCKER/.docker/mcp/catalogs/notebooklm.yaml" "$DOCKER_LOG" >/dev/null
 grep -F 'catalogs/notebooklm.yaml' "$TMP_HOME_DOCKER/.config/mcp/mcp.json" >/dev/null
 grep -F 'registry.d/notebooklm.yaml' "$TMP_HOME_DOCKER/.config/mcp/mcp.json" >/dev/null
 

@@ -9,6 +9,7 @@ NOTEBOOKLM_IMAGE_TAG=${NOTEBOOKLM_IMAGE_TAG:-notebooklm/notebooklm-mcp:latest}
 NOTEBOOKLM_AUTH_IMAGE_TAG=${NOTEBOOKLM_AUTH_IMAGE_TAG:-notebooklm/notebooklm-auth:latest}
 NOTEBOOKLM_AUTH_DIR=${NOTEBOOKLM_AUTH_DIR:-$HOME/.notebooklm-mcp-cli}
 DOCKER_MCP_DIR=${DOCKER_MCP_DIR:-$HOME/.docker/mcp}
+DOCKER_MCP_PROFILE=${PI_DOCKER_MCP_PROFILE:-default}
 INSTALL_DOCKER_COMPONENTS=${PI_INSTALL_DOCKER_COMPONENTS:-0}
 
 log() {
@@ -206,6 +207,24 @@ build_notebooklm_image() {
     "$source_dir"
 }
 
+attach_notebooklm_to_docker_profile() {
+  require_cmd docker
+
+  log "Attaching NotebookLM to the Docker MCP profile: $DOCKER_MCP_PROFILE"
+  docker mcp profile server add "$DOCKER_MCP_PROFILE" \
+    --server "file://$DOCKER_MCP_DIR/catalogs/notebooklm.yaml"
+}
+
+verify_notebooklm_tools_visible() {
+  require_cmd docker
+
+  log "Verifying NotebookLM tools are visible in the Docker MCP gateway"
+  tools_output=$(docker mcp tools ls --format human)
+
+  printf '%s\n' "$tools_output" | grep -F 'notebook_describe - Get AI-generated notebook summary with suggested topics.' >/dev/null || die "NotebookLM summary tool is not visible in the Docker MCP gateway"
+  printf '%s\n' "$tools_output" | grep -F 'notebooklm_login' >/dev/null || die "NotebookLM auth tool is not visible in the Docker MCP gateway"
+}
+
 normalize_flag() {
   case "$1" in
     1|true|TRUE|yes|YES|on|ON)
@@ -283,6 +302,8 @@ EOF
     write_notebooklm_catalog
     write_notebooklm_registry
     build_notebooklm_image
+    attach_notebooklm_to_docker_profile
+    verify_notebooklm_tools_visible
   else
     log "Skipping NotebookLM Docker components (use --with-docker or PI_INSTALL_DOCKER_COMPONENTS=1 to enable)"
   fi
