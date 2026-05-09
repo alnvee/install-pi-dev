@@ -1,1 +1,0 @@
-../productivity/notebooklm-qa/SKILL.md
