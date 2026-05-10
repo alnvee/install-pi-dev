@@ -57,12 +57,12 @@ download_source_dir() {
 
 resolve_source_dir() {
   if [ -n "${PI_INSTALL_SOURCE_DIR:-}" ]; then
-    [ -f "$PI_INSTALL_SOURCE_DIR/.pi/settings.json" ] || die "PI_INSTALL_SOURCE_DIR does not contain .pi/settings.json"
+      [ -f "$PI_INSTALL_SOURCE_DIR/.pi/agent/settings.json" ] || die "PI_INSTALL_SOURCE_DIR does not contain .pi/agent/settings.json"
     printf '%s\n' "$PI_INSTALL_SOURCE_DIR"
     return
   fi
 
-  if [ -f "./.pi/settings.json" ]; then
+    if [ -f "./.pi/agent/settings.json" ]; then
     pwd
     return
   fi
@@ -271,9 +271,9 @@ EOF
   source_dir=$(resolve_source_dir)
   notebooklm_dockerfile="$source_dir/docker/notebooklm-mcp/Dockerfile"
   notebooklm_auth_dockerfile="$source_dir/docker/notebooklm-auth/Dockerfile"
-  settings_path="$source_dir/.pi/settings.json"
+  settings_path="$source_dir/.pi/agent/settings.json"
 
-  [ -f "$settings_path" ] || die "missing .pi/settings.json in $source_dir"
+  [ -f "$settings_path" ] || die "missing .pi/agent/settings.json in $source_dir"
 
   log "Removing existing Pi CLI package"
   npm uninstall -g @mariozechner/pi-coding-agent @earendil-works/pi-coding-agent pi-coding-agent >/dev/null 2>&1 || true

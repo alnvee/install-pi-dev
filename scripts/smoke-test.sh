@@ -54,7 +54,7 @@ expected_packages=$(node -e '
 const fs = require("fs");
 const settings = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
 process.stdout.write((settings.packages || []).join("\n"));
-' "$ROOT_DIR/.pi/settings.json")
+' "$ROOT_DIR/.pi/agent/settings.json")
 
 grep -Fx 'uninstall -g @mariozechner/pi-coding-agent @earendil-works/pi-coding-agent pi-coding-agent' "$NPM_LOG_NO_DOCKER" >/dev/null
 grep -Fx 'install -g @earendil-works/pi-coding-agent' "$NPM_LOG_NO_DOCKER" >/dev/null

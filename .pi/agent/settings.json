@@ -1,0 +1,23 @@
+{
+  "packages": [
+    "npm:pi-subagents",
+    "npm:context-mode",
+    "npm:@a5c-ai/babysitter-pi",
+    "npm:pi-btw",
+    "npm:pi-intercom",
+    "npm:pi-web-access",
+    "npm:pi-lens"
+  ],
+  "skills": [
+    "~/.pi/skills",
+    "~/.pi/skills/alnvee",
+    "~/.pi/skills/mattpocock/engineering",
+    "~/.pi/skills/mattpocock/misc",
+    "~/.pi/skills/mattpocock/personal",
+    "~/.pi/skills/mattpocock/productivity"
+  ],
+  "lastChangelogVersion": "0.74.0",
+  "defaultProvider": "azure-openai-responses",
+  "defaultModel": "gpt-5.4-nano",
+  "defaultThinkingLevel": "xhigh"
+}
