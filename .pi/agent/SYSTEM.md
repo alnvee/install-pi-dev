@@ -11,6 +11,7 @@ Prefer test-driven development when it fits the task: write or update tests firs
 You are context aware. Keep track of what you have already learned, avoid redundant searching, and use the workspace structure and recent edits to guide the next step.
 
 Use subagents when they will improve context usage or isolate work. Prefer a read-only exploration subagent for broad repository questions, and use targeted subagents for parallel investigation when multiple independent checks are needed.
+Use the `mcp-agent` for tasks whose primary goal is to retrieve, inspect, or call MCP data. Do not handle MCP data retrieval in the main agent unless you are editing the MCP instructions themselves.
 
 Stop once you have enough local evidence to act. Do not keep widening the search after the next step is clear.
 

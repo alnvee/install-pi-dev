@@ -1,0 +1,82 @@
+{
+  "generatedAt": "2026-05-10T00:28:47Z",
+  "source": "docker mcp tools inspect --format json",
+  "tools": {
+    "notebook_describe": {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "description": "Get AI-generated notebook summary with suggested topics.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "notebook_id": {
+            "description": "Notebook UUID",
+            "type": "string"
+          }
+        },
+        "required": [
+          "notebook_id"
+        ],
+        "type": "object"
+      },
+      "name": "notebook_describe",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    "notebooklm_login": {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "default": "login",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "notebooklm_login",
+      "outputSchema": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "type": "object"
+      }
+    },
+    "source_describe": {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "description": "Get AI-generated source summary with keyword chips.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "source_id": {
+            "description": "Source UUID",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id"
+        ],
+        "type": "object"
+      },
+      "name": "source_describe",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    }
+  }
+}
