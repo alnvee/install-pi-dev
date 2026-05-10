@@ -5,7 +5,6 @@ This repository contains the `.pi` bundle and an installer that:
 1. Removes the existing Pi CLI and the current `~/.pi` directory.
 2. Installs `@earendil-works/pi-coding-agent` globally with `npm`.
 3. Copies the repository `.pi` folder to `~/.pi`.
-4. Uninstalls and reinstalls the packages listed in `.pi/settings.json` with `pi`, then runs `pi update` so the latest versions are fetched on each run.
 4. Uninstalls and reinstalls the packages listed in `.pi/agent/settings.json` with `pi`, then runs `pi update` so the latest versions are fetched on each run.
 5. Optionally, when run with `--with-docker` or `PI_INSTALL_DOCKER_COMPONENTS=1`, builds the NotebookLM Docker images, writes the Docker MCP overlay files, copies the MCP gateway config, and attaches NotebookLM to the active Docker MCP profile.
 

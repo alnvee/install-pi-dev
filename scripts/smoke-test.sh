@@ -43,7 +43,8 @@ chmod +x "$TMP_BIN_NO_DOCKER/npm" "$TMP_BIN_NO_DOCKER/pi"
 
 PATH="$TMP_BIN_NO_DOCKER:$PATH" HOME="$TMP_HOME_NO_DOCKER" PI_INSTALL_SOURCE_DIR="$ROOT_DIR" sh "$ROOT_DIR/install.sh"
 
-test -f "$TMP_HOME_NO_DOCKER/.pi/settings.json"
+test -f "$TMP_HOME_NO_DOCKER/.pi/agent/settings.json"
+test ! -e "$TMP_HOME_NO_DOCKER/.pi/settings.json"
 test -f "$TMP_HOME_NO_DOCKER/.pi/agent/SYSTEM.md"
 test -f "$TMP_HOME_NO_DOCKER/.pi/agents/planner.md"
 test ! -e "$TMP_HOME_NO_DOCKER/.config/mcp/mcp.json"
@@ -96,7 +97,8 @@ chmod +x "$TMP_BIN_DOCKER/npm" "$TMP_BIN_DOCKER/pi" "$TMP_BIN_DOCKER/docker"
 
 PATH="$TMP_BIN_DOCKER:$PATH" HOME="$TMP_HOME_DOCKER" PI_INSTALL_SOURCE_DIR="$ROOT_DIR" sh "$ROOT_DIR/install.sh" --with-docker
 
-test -f "$TMP_HOME_DOCKER/.pi/settings.json"
+test -f "$TMP_HOME_DOCKER/.pi/agent/settings.json"
+test ! -e "$TMP_HOME_DOCKER/.pi/settings.json"
 test -f "$TMP_HOME_DOCKER/.pi/agent/SYSTEM.md"
 test -f "$TMP_HOME_DOCKER/.pi/agents/planner.md"
 test -f "$TMP_HOME_DOCKER/.config/mcp/mcp.json"

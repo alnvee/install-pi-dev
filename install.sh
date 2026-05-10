@@ -308,7 +308,7 @@ EOF
     log "Skipping NotebookLM Docker components (use --with-docker or PI_INSTALL_DOCKER_COMPONENTS=1 to enable)"
   fi
 
-  install_pi_packages "$target_dir/settings.json"
+  install_pi_packages "$settings_path"
   refresh_pi_packages
 
   log "Pi installation complete"
