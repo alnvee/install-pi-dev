@@ -43,10 +43,36 @@ From the published installer:
 curl -fsSL https://raw.githubusercontent.com/alnvee/install-pi-dev/main/install.sh | sh
 ```
 
+To include the NotebookLM Docker/MCP pieces from the published installer:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/alnvee/install-pi-dev/main/install.sh | sh -s -- --with-docker
+```
+
+You can also enable the same Docker install path with an environment variable:
+
+```sh
+PI_INSTALL_DOCKER_COMPONENTS=1 curl -fsSL https://raw.githubusercontent.com/alnvee/install-pi-dev/main/install.sh | sh
+```
+
 To verify the install flow without touching your real home directory:
 
 ```sh
 ./scripts/smoke-test.sh
+```
+
+To smoke-test the published installer in a throwaway home directory without Docker:
+
+```sh
+TMP_HOME="$(mktemp -d)"
+HOME="$TMP_HOME" curl -fsSL https://raw.githubusercontent.com/alnvee/install-pi-dev/main/install.sh | sh
+```
+
+To smoke-test the published installer with Docker enabled:
+
+```sh
+TMP_HOME="$(mktemp -d)"
+HOME="$TMP_HOME" PI_INSTALL_DOCKER_COMPONENTS=1 curl -fsSL https://raw.githubusercontent.com/alnvee/install-pi-dev/main/install.sh | sh
 ```
 
 After a Docker-enabled install, verify the NotebookLM server is attached and visible with:
