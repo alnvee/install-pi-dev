@@ -189,6 +189,14 @@ registry:
 EOF
 }
 
+select_agent_system_prompt() {
+  if should_install_docker_components; then
+    printf '%s\n' "$source_dir/.pi/agent/SYSTEM.docker.md"
+  else
+    printf '%s\n' "$source_dir/.pi/agent/SYSTEM.md"
+  fi
+}
+
 build_notebooklm_image() {
   require_cmd docker
 
@@ -288,6 +296,10 @@ EOF
   log "Copying Pi bundle to $target_dir"
   mkdir -p "$HOME"
   cp -R "$source_dir/.pi" "$target_dir"
+
+  system_prompt_source=$(select_agent_system_prompt)
+  [ -f "$system_prompt_source" ] || die "missing agent system prompt: $system_prompt_source"
+  cp -f "$system_prompt_source" "$target_dir/agent/SYSTEM.md"
 
   if should_install_docker_components; then
     require_cmd docker

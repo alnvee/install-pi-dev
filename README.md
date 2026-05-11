@@ -7,6 +7,7 @@ This repository contains the `.pi` bundle and an installer that:
 3. Copies the repository `.pi` folder to `~/.pi`.
 4. Uninstalls and reinstalls the packages listed in `.pi/agent/settings.json` with `pi`, then runs `pi update` so the latest versions are fetched on each run.
 5. Optionally, when run with `--with-docker` or `PI_INSTALL_DOCKER_COMPONENTS=1`, builds the NotebookLM Docker images, writes the Docker MCP overlay files, copies the MCP gateway config, and attaches NotebookLM to the active Docker MCP profile.
+6. Switches the installed `.pi/agent/SYSTEM.md` to the Docker-aware variant only for Docker-enabled installs; the base install keeps a system prompt without the `mcp-agent` reference.
 
 When you run the script from a local checkout, it uses the checkout’s `.pi` directory. When you stream it with `curl | sh`, it downloads the current `main` branch archive from `alnvee/install-pi-dev` so changes to `.pi` are picked up on every install.
 
