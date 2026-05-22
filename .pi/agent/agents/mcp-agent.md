@@ -3,6 +3,7 @@ name: mcp-agent
 description: Retrieves data from MCP by invoking the `mcp` skill and Docker MCP CLI
 tools: read, bash
 model: gpt-5.4-nano
+fallbackModels: openai/gpt-5-mini
 thinking: xhigh
 systemPromptMode: replace
 inheritProjectContext: true

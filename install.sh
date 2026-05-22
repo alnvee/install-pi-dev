@@ -248,6 +248,26 @@ should_install_docker_components() {
   [ "$(normalize_flag "$INSTALL_DOCKER_COMPONENTS")" -eq 1 ]
 }
 
+verify_subagent_layout() {
+  install_root=$1
+
+  [ -d "$install_root/agent/agents" ] || die "missing agent directory: $install_root/agent/agents"
+  [ -d "$install_root/agent/chains" ] || die "missing chain directory: $install_root/agent/chains"
+}
+
+sync_skills_into_agent_scope() {
+  install_root=$1
+  legacy_skills_dir="$install_root/skills"
+  agent_skills_dir="$install_root/agent/skills"
+
+  mkdir -p "$agent_skills_dir"
+
+  if [ -d "$legacy_skills_dir" ]; then
+    cp -R "$legacy_skills_dir/." "$agent_skills_dir/"
+    rm -rf "$legacy_skills_dir"
+  fi
+}
+
 main() {
   require_cmd npm
   require_cmd node
@@ -296,6 +316,9 @@ EOF
   log "Copying Pi bundle to $target_dir"
   mkdir -p "$HOME"
   cp -R "$source_dir/.pi" "$target_dir"
+
+  verify_subagent_layout "$target_dir"
+  sync_skills_into_agent_scope "$target_dir"
 
   system_prompt_source=$(select_agent_system_prompt)
   [ -f "$system_prompt_source" ] || die "missing agent system prompt: $system_prompt_source"

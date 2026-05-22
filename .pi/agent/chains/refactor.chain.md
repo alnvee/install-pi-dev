@@ -36,6 +36,7 @@ Do NOT edit any files.
 reads: context.md
 thinking: xhigh
 progress: true
+output: plan.md
 
 Plan the refactor: {task}
 

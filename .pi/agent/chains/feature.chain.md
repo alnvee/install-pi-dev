@@ -20,6 +20,7 @@ reads: context.md
 model: gpt-5.4-nano
 thinking: xhigh
 progress: true
+output: plan.md
 
 Create a detailed implementation plan for: {task}
 

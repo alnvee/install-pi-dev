@@ -3,7 +3,9 @@ name: planner
 description: Creates implementation plans from context and requirements
 tools: read, grep, find, ls, write
 model: gpt-5.4-nano
+fallbackModels: openai/gpt-5-mini
 thinking: xhigh
+defaultContext: fork
 systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: false

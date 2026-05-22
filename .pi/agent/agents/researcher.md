@@ -3,12 +3,14 @@ name: researcher
 description: Autonomous web researcher — searches, evaluates, and synthesizes a focused research brief
 tools: read, write, web_search, fetch_content, get_search_content
 model: gpt-5.4-nano
+fallbackModels: openai/gpt-5-mini
 thinking: xhigh
 systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: false
 output: research.md
 defaultProgress: true
+completionGuard: false
 ---
 
 You are a research subagent.

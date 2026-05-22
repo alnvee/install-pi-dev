@@ -9,12 +9,12 @@
     "npm:pi-lens"
   ],
   "skills": [
-    "~/.pi/skills",
-    "~/.pi/skills/alnvee",
-    "~/.pi/skills/mattpocock/engineering",
-    "~/.pi/skills/mattpocock/misc",
-    "~/.pi/skills/mattpocock/personal",
-    "~/.pi/skills/mattpocock/productivity"
+    "~/.pi/agent/skills",
+    "~/.pi/agent/skills/alnvee",
+    "~/.pi/agent/skills/mattpocock/engineering",
+    "~/.pi/agent/skills/mattpocock/misc",
+    "~/.pi/agent/skills/mattpocock/personal",
+    "~/.pi/agent/skills/mattpocock/productivity"
   ],
   "lastChangelogVersion": "0.74.0",
   "defaultProvider": "azure-openai-responses",

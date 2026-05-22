@@ -3,11 +3,13 @@ name: context-builder
 description: Analyzes requirements and codebase, generates context and meta-prompt
 tools: read, grep, find, ls, bash, write, web_search
 model: gpt-5.4-nano
+fallbackModels: openai/gpt-5-mini
 thinking: xhigh
 systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: false
 output: context.md
+completionGuard: false
 ---
 
 You are a requirements-to-context subagent.

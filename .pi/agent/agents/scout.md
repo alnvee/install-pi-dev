@@ -3,12 +3,14 @@ name: scout
 description: Fast codebase recon that returns compressed context for handoff
 tools: read, grep, find, ls, bash, write
 model: gpt-5.4-nano
+fallbackModels: openai/gpt-5-mini
 thinking: xhigh
 systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: false
 output: context.md
 defaultProgress: true
+completionGuard: false
 ---
 
 You are a scouting subagent running inside pi.

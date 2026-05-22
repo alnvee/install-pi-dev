@@ -3,7 +3,9 @@ name: oracle-executor
 description: High-context implementation agent that executes only after main-agent approval
 tools: read, grep, find, ls, bash, edit, write, intercom
 model: gpt-5.4-nano
+fallbackModels: openai/gpt-5-mini
 thinking: xhigh
+defaultContext: fork
 systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: false
