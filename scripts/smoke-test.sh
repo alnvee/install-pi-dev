@@ -50,7 +50,9 @@ test -f "$TMP_HOME_NO_DOCKER/.pi/agent/agents/planner.md"
 test -f "$TMP_HOME_NO_DOCKER/.pi/agent/chains/feature.chain.md"
 test -f "$TMP_HOME_NO_DOCKER/.pi/agent/extensions/subagent/config.json"
 test -f "$TMP_HOME_NO_DOCKER/.pi/agent/skills/alnvee/mcp/SKILL.md"
+test -d "$TMP_HOME_NO_DOCKER/.pi/agent/prompts"
 test ! -e "$TMP_HOME_NO_DOCKER/.pi/skills"
+test ! -e "$TMP_HOME_NO_DOCKER/.pi/prompts"
 test ! -e "$TMP_HOME_NO_DOCKER/.config/mcp/mcp.json"
 test ! -e "$TMP_HOME_NO_DOCKER/.docker/mcp/catalogs/notebooklm.yaml"
 test ! -e "$TMP_HOME_NO_DOCKER/.docker/mcp/registry.d/notebooklm.yaml"
@@ -68,6 +70,10 @@ for package in $expected_packages; do
   grep -Fx "uninstall $package" "$PI_LOG_NO_DOCKER" >/dev/null
   grep -Fx "install $package" "$PI_LOG_NO_DOCKER" >/dev/null
 done
+
+last_uninstall=$(grep -n '^uninstall ' "$PI_LOG_NO_DOCKER" | tail -1 | cut -d: -f1)
+first_install=$(grep -n '^install ' "$PI_LOG_NO_DOCKER" | head -1 | cut -d: -f1)
+test "$last_uninstall" -lt "$first_install"
 
 grep -Fx 'update' "$PI_LOG_NO_DOCKER" >/dev/null
 
@@ -108,7 +114,9 @@ test -f "$TMP_HOME_DOCKER/.pi/agent/agents/planner.md"
 test -f "$TMP_HOME_DOCKER/.pi/agent/chains/feature.chain.md"
 test -f "$TMP_HOME_DOCKER/.pi/agent/extensions/subagent/config.json"
 test -f "$TMP_HOME_DOCKER/.pi/agent/skills/alnvee/mcp/SKILL.md"
+test -d "$TMP_HOME_DOCKER/.pi/agent/prompts"
 test ! -e "$TMP_HOME_DOCKER/.pi/skills"
+test ! -e "$TMP_HOME_DOCKER/.pi/prompts"
 test -f "$TMP_HOME_DOCKER/.config/mcp/mcp.json"
 test -f "$TMP_HOME_DOCKER/.docker/mcp/catalogs/notebooklm.yaml"
 test -f "$TMP_HOME_DOCKER/.docker/mcp/registry.d/notebooklm.yaml"
@@ -128,6 +136,10 @@ for package in $expected_packages; do
   grep -Fx "uninstall $package" "$PI_LOG_DOCKER" >/dev/null
   grep -Fx "install $package" "$PI_LOG_DOCKER" >/dev/null
 done
+
+last_uninstall=$(grep -n '^uninstall ' "$PI_LOG_DOCKER" | tail -1 | cut -d: -f1)
+first_install=$(grep -n '^install ' "$PI_LOG_DOCKER" | head -1 | cut -d: -f1)
+test "$last_uninstall" -lt "$first_install"
 
 grep -Fx 'update' "$PI_LOG_DOCKER" >/dev/null
 

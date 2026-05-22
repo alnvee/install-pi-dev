@@ -21,6 +21,8 @@ This repo expects a workspace-local `./.env` file with `NOTEBOOKLM_NOTEBOOK_URL`
 
 The source bundle keeps the MCP skill at [`.pi/skills/alnvee/mcp/SKILL.md`](/home/aln/Projects/install-pi-dev/.pi/skills/alnvee/mcp/SKILL.md). During install, the script mirrors skills into the user-scope path `~/.pi/agent/skills/...` so the installed layout matches the Pi subagent docs.
 
+The same normalization is applied for prompt templates: source prompts under `.pi/prompts` are mirrored into `~/.pi/agent/prompts/...` during install so prompt-template packages use the documented path.
+
 If you are creating a new workspace, copy [`.env.example`](/home/aln/Projects/install-pi-dev/.env.example) to `./.env` and set the notebook URL before trying to query NotebookLM.
 
 ## Usage

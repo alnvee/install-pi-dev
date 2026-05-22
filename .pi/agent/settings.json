@@ -6,6 +6,8 @@
     "npm:pi-btw",
     "npm:pi-intercom",
     "npm:pi-web-access",
+    "npm:pi-mcp-adapter",
+    "npm:pi-prompt-template-model",
     "npm:pi-lens"
   ],
   "skills": [

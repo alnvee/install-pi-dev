@@ -96,7 +96,10 @@ install_pi_packages() {
       [ -n "$package" ] || continue
       log "Uninstalling Pi package: $package"
       pi uninstall "$package" >/dev/null 2>&1 || true
+    done
 
+    printf '%s\n' "$packages" | while IFS= read -r package; do
+      [ -n "$package" ] || continue
       log "Installing Pi package: $package"
       pi install "$package"
     done
@@ -268,6 +271,19 @@ sync_skills_into_agent_scope() {
   fi
 }
 
+sync_prompts_into_agent_scope() {
+  install_root=$1
+  legacy_prompts_dir="$install_root/prompts"
+  agent_prompts_dir="$install_root/agent/prompts"
+
+  mkdir -p "$agent_prompts_dir"
+
+  if [ -d "$legacy_prompts_dir" ]; then
+    cp -R "$legacy_prompts_dir/." "$agent_prompts_dir/"
+    rm -rf "$legacy_prompts_dir"
+  fi
+}
+
 main() {
   require_cmd npm
   require_cmd node
@@ -319,6 +335,7 @@ EOF
 
   verify_subagent_layout "$target_dir"
   sync_skills_into_agent_scope "$target_dir"
+  sync_prompts_into_agent_scope "$target_dir"
 
   system_prompt_source=$(select_agent_system_prompt)
   [ -f "$system_prompt_source" ] || die "missing agent system prompt: $system_prompt_source"
