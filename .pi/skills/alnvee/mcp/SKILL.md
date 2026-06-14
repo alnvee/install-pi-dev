@@ -29,9 +29,10 @@ If the task is to summarize the _active_ NotebookLM notebook (e.g. “summarize 
 2. Extract `notebook_id` as the final path segment (the part after `/notebook/`).
 3. Call:
    `docker mcp tools call notebook_describe notebook_id=<notebook_id>`
-4. If the call fails due to auth/session, call:
-   `docker mcp tools call notebooklm_login mode=login`
-   and retry the `notebook_describe` call once.
+4. If the call fails due to auth/session, first call:
+   `docker mcp tools call notebooklm_login mode=check`
+   and only fall back to `mode=login` when you need to re-authenticate; use `mode=manual` if the browser-based flow is unavailable.
+   Then retry the `notebook_describe` call once.
 
 (If the task is about sources instead of the whole notebook, use `source_describe` analogously.)
 

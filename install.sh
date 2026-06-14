@@ -6,7 +6,6 @@ SCRIPT_NAME=$(basename "$0")
 REPO_URL=${PI_INSTALL_REPO_URL:-https://github.com/alnvee/install-pi-dev}
 REPO_BRANCH=${PI_INSTALL_REPO_BRANCH:-main}
 NOTEBOOKLM_IMAGE_TAG=${NOTEBOOKLM_IMAGE_TAG:-notebooklm/notebooklm-mcp:latest}
-NOTEBOOKLM_AUTH_IMAGE_TAG=${NOTEBOOKLM_AUTH_IMAGE_TAG:-notebooklm/notebooklm-auth:latest}
 NOTEBOOKLM_AUTH_DIR=${NOTEBOOKLM_AUTH_DIR:-$HOME/.notebooklm-mcp-cli}
 DOCKER_MCP_DIR=${DOCKER_MCP_DIR:-$HOME/.docker/mcp}
 DOCKER_MCP_PROFILE=${PI_DOCKER_MCP_PROFILE:-default}
@@ -122,7 +121,7 @@ name: notebooklm
 displayName: NotebookLM Overlay
 registry:
   notebooklm-mcp:
-    description: NotebookLM CLI and MCP server packaged for the Docker MCP gateway.
+    description: NotebookLM CLI, MCP tools, and auth helper packaged for the Docker MCP gateway.
     title: NotebookLM
     type: server
     longLived: true
@@ -149,34 +148,6 @@ registry:
         - ai
         - productivity
       license: MIT License
-  notebooklm-auth:
-    description: NotebookLM authentication helper exposed as an MCP tool.
-    title: NotebookLM Auth
-    type: server
-    longLived: true
-    dateAdded: "2026-05-09T00:00:00Z"
-    image: $NOTEBOOKLM_AUTH_IMAGE_TAG
-    ref: ""
-    readme: https://github.com/jacob-bd/notebooklm-mcp-cli/blob/main/docs/AUTHENTICATION.md
-    toolsUrl: https://github.com/jacob-bd/notebooklm-mcp-cli/blob/main/docs/AUTHENTICATION.md
-    source: https://github.com/jacob-bd/notebooklm-mcp-cli
-    upstream: https://github.com/jacob-bd/notebooklm-mcp-cli
-    icon: https://raw.githubusercontent.com/jacob-bd/notebooklm-mcp-cli/main/docs/media/header.jpg
-    env:
-      - name: NOTEBOOKLM_MCP_TRANSPORT
-        value: stdio
-    volumes:
-      - "$NOTEBOOKLM_AUTH_DIR:/root/.notebooklm-mcp-cli"
-    prompts: 0
-    resources: {}
-    metadata:
-      owner: alnvee
-      category: productivity
-      tags:
-        - notebooklm
-        - auth
-        - productivity
-      license: MIT License
 EOF
 }
 
@@ -187,9 +158,34 @@ write_notebooklm_registry() {
 registry:
   notebooklm-mcp:
     ref: ""
-  notebooklm-auth:
-    ref: ""
 EOF
+}
+
+merge_mcp_config() {
+  source_config=$1
+  destination_config=$2
+
+  mkdir -p "$(dirname "$destination_config")"
+
+  node - "$source_config" "$destination_config" <<'NODE'
+const fs = require('fs');
+
+const [sourcePath, destinationPath] = process.argv.slice(2);
+const sourceConfig = JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
+const destinationConfig = fs.existsSync(destinationPath)
+  ? JSON.parse(fs.readFileSync(destinationPath, 'utf8'))
+  : {};
+
+const mergedConfig = {
+  ...destinationConfig,
+  mcpServers: {
+    ...(destinationConfig.mcpServers || {}),
+    ...(sourceConfig.mcpServers || {})
+  }
+};
+
+fs.writeFileSync(destinationPath, `${JSON.stringify(mergedConfig, null, 2)}\n`, 'utf8');
+NODE
 }
 
 select_agent_system_prompt() {
@@ -211,15 +207,15 @@ build_notebooklm_image() {
     --file "$source_dir/docker/notebooklm-mcp/Dockerfile" \
     "$source_dir"
 
-  log "Building NotebookLM auth helper image"
-  docker build \
-    --tag "$NOTEBOOKLM_AUTH_IMAGE_TAG" \
-    --file "$source_dir/docker/notebooklm-auth/Dockerfile" \
-    "$source_dir"
 }
 
 attach_notebooklm_to_docker_profile() {
   require_cmd docker
+
+  if docker mcp profile server ls --filter profile="$DOCKER_MCP_PROFILE" 2>/dev/null | grep -F 'notebooklm' >/dev/null 2>&1; then
+    log "NotebookLM is already attached to profile: $DOCKER_MCP_PROFILE"
+    return 0
+  fi
 
   log "Attaching NotebookLM to the Docker MCP profile: $DOCKER_MCP_PROFILE"
   docker mcp profile server add "$DOCKER_MCP_PROFILE" \
@@ -314,7 +310,6 @@ EOF
 
   source_dir=$(resolve_source_dir)
   notebooklm_dockerfile="$source_dir/docker/notebooklm-mcp/Dockerfile"
-  notebooklm_auth_dockerfile="$source_dir/docker/notebooklm-auth/Dockerfile"
   settings_path="$source_dir/.pi/agent/settings.json"
 
   [ -f "$settings_path" ] || die "missing .pi/agent/settings.json in $source_dir"
@@ -345,11 +340,9 @@ EOF
     require_cmd docker
     [ -f "$source_dir/.mcp.json" ] || die "missing .mcp.json in $source_dir"
     [ -f "$notebooklm_dockerfile" ] || die "missing docker/notebooklm-mcp/Dockerfile in $source_dir"
-    [ -f "$notebooklm_auth_dockerfile" ] || die "missing docker/notebooklm-auth/Dockerfile in $source_dir"
 
-    log "Copying MCP config to $HOME/.config/mcp/mcp.json"
-    mkdir -p "$HOME/.config/mcp"
-    cp -f "$source_dir/.mcp.json" "$HOME/.config/mcp/mcp.json"
+    log "Merging NotebookLM MCP overlay into $HOME/.config/mcp/mcp.json"
+    merge_mcp_config "$source_dir/.mcp.json" "$HOME/.config/mcp/mcp.json"
 
     write_notebooklm_catalog
     write_notebooklm_registry

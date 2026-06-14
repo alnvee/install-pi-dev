@@ -1,6 +1,7 @@
 {
   "packages": [
     "npm:pi-subagents",
+    "https://github.com/alnvee/pi-plan-orchestrator",
     "npm:context-mode",
     "npm:pi-btw",
     "npm:pi-intercom",

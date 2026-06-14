@@ -5,10 +5,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     NOTEBOOKLM_MCP_TRANSPORT=stdio \
     HOME=/root
 
-RUN pip install --no-cache-dir notebooklm-mcp-cli \
+RUN pip install --no-cache-dir fastmcp notebooklm-mcp-cli \
     && mkdir -p /root/.notebooklm-mcp-cli
+
+COPY docker/notebooklm-mcp/server.py /app/server.py
 
 VOLUME ["/root/.notebooklm-mcp-cli"]
 
-CMD ["notebooklm-mcp"]
+CMD ["python", "/app/server.py"]
 

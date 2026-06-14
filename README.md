@@ -84,5 +84,5 @@ docker mcp profile server ls --filter profile=default | rg notebooklm
 docker mcp tools ls --format human | rg 'notebook_describe|notebooklm_login|source_describe'
 ```
 
-The NotebookLM service is packaged as a Docker image and registered with the same gateway that backs `MCP_DOCKER`. If you need to refresh NotebookLM auth, call the `notebooklm_login` tool on the `notebooklm-auth` MCP server.
+The NotebookLM service is packaged as a single Docker image and registered with the same gateway that backs `MCP_DOCKER`. The `notebooklm_login` helper is now bundled into that same server, so auth checks and re-authentication run on the unified `notebooklm-mcp` image. Start with `notebooklm_login mode=check` to confirm your session; use `mode=login` only when you really need to re-authenticate, and `mode=manual` if the browser-based login path is unavailable.
 
