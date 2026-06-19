@@ -3,12 +3,17 @@
     "npm:pi-subagents",
     "https://github.com/alnvee/pi-plan-orchestrator",
     "npm:context-mode",
-    "npm:pi-btw",
+    "npm:@juicesharp/rpiv-btw",
     "npm:pi-intercom",
     "npm:pi-web-access",
     "npm:pi-mcp-adapter",
     "npm:pi-lens",
-    "npm:@juicesharp/rpiv-ask-user-question"
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "npm:@juicesharp/rpiv-todo",
+    "npm:@hypabolic/pi-hypa",
+    "npm:@gotgenes/pi-permission-system",
+    "npm:@juicesharp/rpiv-advisor",
+    "npm:pi-powerline-footer"
   ],
   "skills": [
     "~/.pi/agent/skills",
