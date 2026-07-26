@@ -1,18 +1,15 @@
 {
   "packages": [
-    "npm:pi-subagents",
-    "https://github.com/alnvee/pi-plan-orchestrator",
-    "npm:context-mode",
-    "npm:@juicesharp/rpiv-btw",
-    "npm:pi-intercom",
-    "npm:pi-web-access",
+    "npm:@vigolium/piolium",
     "npm:pi-mcp-adapter",
+    "npm:pi-web-access",
+    "npm:@tintinweb/pi-subagents",
+    "npm:context-mode",
+    "npm:bigpowers",
     "npm:pi-lens",
-    "npm:@juicesharp/rpiv-ask-user-question",
-    "npm:@juicesharp/rpiv-todo",
-    "npm:@hypabolic/pi-hypa",
-    "npm:@juicesharp/rpiv-advisor",
-    "npm:pi-powerline-footer"
+    "npm:@dietrichgebert/ponytail",
+    "npm:@plannotator/pi-extension"
+
   ],
   "skills": [
     "~/.pi/agent/skills",
@@ -23,7 +20,7 @@
     "~/.pi/agent/skills/mattpocock/productivity"
   ],
   "lastChangelogVersion": "0.74.0",
-  "defaultProvider": "azure-openai-responses",
-  "defaultModel": "gpt-5.4-nano",
+  "defaultProvider": "ollama",
+  "defaultModel": "laguna-xs-2.1",
   "defaultThinkingLevel": "xhigh"
 }
