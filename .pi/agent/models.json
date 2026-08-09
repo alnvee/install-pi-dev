@@ -7,6 +7,14 @@
       "models": [
         {
           "id": "laguna-xs-2.1"
+        },
+        {
+          "id": "qwen3.5:9b",
+          "maxTokens": 16384
+        },
+        {
+          "id": "qwen3.5:4b",
+          "maxTokens": 16384
         }
       ]
     }

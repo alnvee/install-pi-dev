@@ -1,15 +1,17 @@
 {
   "packages": [
-    "npm:@vigolium/piolium",
-    "npm:pi-mcp-adapter",
-    "npm:pi-web-access",
     "npm:@tintinweb/pi-subagents",
-    "npm:context-mode",
-    "npm:bigpowers",
-    "npm:pi-lens",
     "npm:@dietrichgebert/ponytail",
-    "npm:@plannotator/pi-extension"
-
+    "npm:@plannotator/pi-extension",
+    "npm:context-mode",
+    "npm:@juicesharp/rpiv-btw",
+    "npm:pi-web-access",
+    "npm:pi-mcp-adapter",
+    "npm:pi-lens",
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "npm:@juicesharp/rpiv-todo",
+    "npm:@juicesharp/rpiv-advisor",
+    "npm:pi-powerline-footer"
   ],
   "skills": [
     "~/.pi/agent/skills",
@@ -20,7 +22,7 @@
     "~/.pi/agent/skills/mattpocock/productivity"
   ],
   "lastChangelogVersion": "0.74.0",
-  "defaultProvider": "ollama",
-  "defaultModel": "laguna-xs-2.1",
+  "defaultProvider": "openrouter",
+  "defaultModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
   "defaultThinkingLevel": "xhigh"
 }
