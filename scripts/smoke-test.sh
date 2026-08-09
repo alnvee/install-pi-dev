@@ -3,71 +3,77 @@
 set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
-TMP_DIR_NO_DOCKER=$(mktemp -d)
-TMP_HOME_NO_DOCKER="$TMP_DIR_NO_DOCKER/home"
-TMP_BIN_NO_DOCKER="$TMP_DIR_NO_DOCKER/bin"
-NPM_LOG_NO_DOCKER="$TMP_DIR_NO_DOCKER/npm.log"
-PI_LOG_NO_DOCKER="$TMP_DIR_NO_DOCKER/pi.log"
-
-TMP_DIR_DOCKER=$(mktemp -d)
-TMP_HOME_DOCKER="$TMP_DIR_DOCKER/home"
-TMP_BIN_DOCKER="$TMP_DIR_DOCKER/bin"
-NPM_LOG_DOCKER="$TMP_DIR_DOCKER/npm.log"
-PI_LOG_DOCKER="$TMP_DIR_DOCKER/pi.log"
-DOCKER_LOG="$TMP_DIR_DOCKER/docker.log"
+TMP_DIR=$(mktemp -d)
+TMP_HOME="$TMP_DIR/home"
+TMP_BIN="$TMP_DIR/bin"
+SOURCE_DIR="$TMP_DIR/source"
+SKILL_REPO="$TMP_DIR/skillrepo"
+NPM_LOG="$TMP_DIR/npm.log"
+PI_LOG="$TMP_DIR/pi.log"
+SKILL_MARKER="mattpocock-skills-refresh-marker"
 
 cleanup() {
-  rm -rf "$TMP_DIR_NO_DOCKER" "$TMP_DIR_DOCKER"
+	rm -rf "$TMP_DIR"
 }
 
 trap cleanup EXIT INT TERM
 
-mkdir -p "$TMP_HOME_NO_DOCKER" "$TMP_BIN_NO_DOCKER" "$TMP_HOME_DOCKER" "$TMP_BIN_DOCKER"
-mkdir -p "$TMP_HOME_DOCKER/.config/mcp"
-cat > "$TMP_HOME_DOCKER/.config/mcp/mcp.json" <<EOF
-{
-  "mcpServers": {
-    "EXISTING_SERVER": {
-      "command": "existing-tool",
-      "args": ["--demo"],
-      "type": "stdio"
-    }
-  }
-}
+# Fixture upstream repo mimicking github.com/mattpocock/skills
+# (archive root containing skills/<bucket>/<name>/SKILL.md).
+mkdir -p "$TMP_DIR/fixture/skills/engineering/demo" "$SKILL_REPO/archive/refs/heads"
+cat >"$TMP_DIR/fixture/skills/engineering/demo/SKILL.md" <<EOF
+---
+name: demo
+---
+$SKILL_MARKER
 EOF
+tar -czf "$SKILL_REPO/archive/refs/heads/main.tar.gz" -C "$TMP_DIR" fixture
 
-test -f "$ROOT_DIR/.env"
-grep -Eq '^NOTEBOOKLM_NOTEBOOK_URL=https://notebooklm\.google\.com/notebook/[^[:space:]]+$' "$ROOT_DIR/.env"
+# Working copy of the repo so the refresh step never mutates the real checkout.
+cp -R "$ROOT_DIR" "$SOURCE_DIR"
+rm -rf "$SOURCE_DIR/.git" "$SOURCE_DIR/.pi/sessions"
 
-cat > "$TMP_BIN_NO_DOCKER/npm" <<EOF
+mkdir -p "$TMP_HOME" "$TMP_BIN"
+
+cat >"$TMP_BIN/npm" <<EOF
 #!/bin/sh
-printf '%s\n' "\$*" >> "$NPM_LOG_NO_DOCKER"
+printf '%s\n' "\$*" >> "$NPM_LOG"
 exit 0
 EOF
 
-cat > "$TMP_BIN_NO_DOCKER/pi" <<EOF
+cat >"$TMP_BIN/pi" <<EOF
 #!/bin/sh
-printf '%s\n' "\$*" >> "$PI_LOG_NO_DOCKER"
+printf '%s\n' "\$*" >> "$PI_LOG"
 exit 0
 EOF
 
-chmod +x "$TMP_BIN_NO_DOCKER/npm" "$TMP_BIN_NO_DOCKER/pi"
+chmod +x "$TMP_BIN/npm" "$TMP_BIN/pi"
 
-PATH="$TMP_BIN_NO_DOCKER:$PATH" HOME="$TMP_HOME_NO_DOCKER" PI_INSTALL_SOURCE_DIR="$ROOT_DIR" sh "$ROOT_DIR/install.sh"
+# First install: refresh path. The fake upstream replaces the bundled
+# mattpocock skills (engineering/demo) before the bundle is copied.
+PATH="$TMP_BIN:$PATH" HOME="$TMP_HOME" PI_INSTALL_SOURCE_DIR="$SOURCE_DIR" \
+	PI_MATTPOCOCK_SKILLS_REPO="file://$SKILL_REPO" \
+	sh "$ROOT_DIR/install.sh"
 
-test -f "$TMP_HOME_NO_DOCKER/.pi/agent/settings.json"
-test ! -e "$TMP_HOME_NO_DOCKER/.pi/settings.json"
-test -f "$TMP_HOME_NO_DOCKER/.pi/agent/SYSTEM.md"
-test -f "$TMP_HOME_NO_DOCKER/.pi/agent/agents/planner.md"
-test -f "$TMP_HOME_NO_DOCKER/.pi/agent/chains/feature.chain.md"
-test -f "$TMP_HOME_NO_DOCKER/.pi/agent/extensions/subagent/config.json"
-test -f "$TMP_HOME_NO_DOCKER/.pi/agent/skills/alnvee/mcp/SKILL.md"
-test -d "$TMP_HOME_NO_DOCKER/.pi/agent/prompts"
-test ! -e "$TMP_HOME_NO_DOCKER/.pi/skills"
-test ! -e "$TMP_HOME_NO_DOCKER/.pi/prompts"
-test ! -e "$TMP_HOME_NO_DOCKER/.config/mcp/mcp.json"
-test ! -e "$TMP_HOME_NO_DOCKER/.docker/mcp/catalogs/notebooklm.yaml"
-test ! -e "$TMP_HOME_NO_DOCKER/.docker/mcp/registry.d/notebooklm.yaml"
+test -f "$TMP_HOME/.pi/agent/settings.json"
+test ! -e "$TMP_HOME/.pi/settings.json"
+test -f "$TMP_HOME/.pi/agent/SYSTEM.md"
+test -f "$TMP_HOME/.pi/agent/skills/alnvee/mcp/SKILL.md"
+test -d "$TMP_HOME/.pi/agent/prompts"
+test ! -e "$TMP_HOME/.pi/skills"
+test ! -e "$TMP_HOME/.pi/prompts"
+test ! -e "$TMP_HOME/.pi/sessions"
+test ! -e "$TMP_HOME/.pi/npm"
+test ! -e "$TMP_HOME/.config/mcp/mcp.json"
+
+# The upstream copy lands in the source dir first ("copied to this repository"),
+# then in the installed agent skills.
+test -f "$SOURCE_DIR/.pi/skills/mattpocock/engineering/demo/SKILL.md"
+grep -F "$SKILL_MARKER" "$SOURCE_DIR/.pi/skills/mattpocock/engineering/demo/SKILL.md" >/dev/null
+test -f "$TMP_HOME/.pi/agent/skills/mattpocock/engineering/demo/SKILL.md"
+grep -F "$SKILL_MARKER" "$TMP_HOME/.pi/agent/skills/mattpocock/engineering/demo/SKILL.md" >/dev/null
+# The bundled engineering bucket was replaced by the upstream one.
+test ! -e "$TMP_HOME/.pi/agent/skills/mattpocock/engineering/tdd"
 
 expected_packages=$(node -e '
 const fs = require("fs");
@@ -75,94 +81,33 @@ const settings = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
 process.stdout.write((settings.packages || []).join("\n"));
 ' "$ROOT_DIR/.pi/agent/settings.json")
 
-grep -Fx 'uninstall -g @mariozechner/pi-coding-agent @earendil-works/pi-coding-agent pi-coding-agent' "$NPM_LOG_NO_DOCKER" >/dev/null
-grep -Fx 'install -g @earendil-works/pi-coding-agent' "$NPM_LOG_NO_DOCKER" >/dev/null
+grep -Fx 'uninstall -g @mariozechner/pi-coding-agent @earendil-works/pi-coding-agent pi-coding-agent' "$NPM_LOG" >/dev/null
+grep -Fx 'install -g @earendil-works/pi-coding-agent' "$NPM_LOG" >/dev/null
 
 for package in $expected_packages; do
-  grep -Fx "uninstall $package" "$PI_LOG_NO_DOCKER" >/dev/null
-  grep -Fx "install $package" "$PI_LOG_NO_DOCKER" >/dev/null
+	grep -Fx "uninstall $package" "$PI_LOG" >/dev/null
+	grep -Fx "install $package" "$PI_LOG" >/dev/null
 done
 
-last_uninstall=$(grep -n '^uninstall ' "$PI_LOG_NO_DOCKER" | tail -1 | cut -d: -f1)
-first_install=$(grep -n '^install ' "$PI_LOG_NO_DOCKER" | head -1 | cut -d: -f1)
+last_uninstall=$(grep -n '^uninstall ' "$PI_LOG" | tail -1 | cut -d: -f1)
+first_install=$(grep -n '^install ' "$PI_LOG" | head -1 | cut -d: -f1)
 test "$last_uninstall" -lt "$first_install"
 
-grep -Fx 'update' "$PI_LOG_NO_DOCKER" >/dev/null
+grep -Fx 'update' "$PI_LOG" >/dev/null
 
-cat > "$TMP_BIN_DOCKER/npm" <<EOF
-#!/bin/sh
-printf '%s\n' "\$*" >> "$NPM_LOG_DOCKER"
-exit 0
-EOF
+# Second install: refresh fallback. Unreachable upstream keeps the bundled copies.
+rm -rf "$SOURCE_DIR"
+cp -R "$ROOT_DIR" "$SOURCE_DIR"
+rm -rf "$SOURCE_DIR/.git" "$SOURCE_DIR/.pi/sessions"
+rm -rf "$TMP_HOME"
+mkdir -p "$TMP_HOME"
+: >"$NPM_LOG"
+: >"$PI_LOG"
 
-cat > "$TMP_BIN_DOCKER/pi" <<EOF
-#!/bin/sh
-printf '%s\n' "\$*" >> "$PI_LOG_DOCKER"
-exit 0
-EOF
+PATH="$TMP_BIN:$PATH" HOME="$TMP_HOME" PI_INSTALL_SOURCE_DIR="$SOURCE_DIR" \
+	PI_MATTPOCOCK_SKILLS_REPO="file://$TMP_DIR/missing-repo" \
+	sh "$ROOT_DIR/install.sh"
 
-cat > "$TMP_BIN_DOCKER/docker" <<EOF
-#!/bin/sh
-case "\$*" in
-  'mcp profile server ls --filter profile=default')
-    printf '%s\n' "\$*" >> "$DOCKER_LOG"
-    exit 0
-    ;;
-  'mcp tools ls --format human')
-    printf '%s\n' '59: - notebook_describe - Get AI-generated notebook summary with suggested topics.'
-    printf '%s\n' '70: - notebooklm_login -'
-    printf '%s\n' '85: - source_describe - Get AI-generated source summary with keyword chips.'
-    exit 0
-    ;;
-esac
-printf '%s\n' "\$*" >> "$DOCKER_LOG"
-exit 0
-EOF
-
-chmod +x "$TMP_BIN_DOCKER/npm" "$TMP_BIN_DOCKER/pi" "$TMP_BIN_DOCKER/docker"
-
-PATH="$TMP_BIN_DOCKER:$PATH" HOME="$TMP_HOME_DOCKER" PI_INSTALL_SOURCE_DIR="$ROOT_DIR" sh "$ROOT_DIR/install.sh" --with-docker
-
-test -f "$TMP_HOME_DOCKER/.pi/agent/settings.json"
-test ! -e "$TMP_HOME_DOCKER/.pi/settings.json"
-test -f "$TMP_HOME_DOCKER/.pi/agent/SYSTEM.md"
-test -f "$TMP_HOME_DOCKER/.pi/agent/agents/planner.md"
-test -f "$TMP_HOME_DOCKER/.pi/agent/chains/feature.chain.md"
-test -f "$TMP_HOME_DOCKER/.pi/agent/extensions/subagent/config.json"
-test -f "$TMP_HOME_DOCKER/.pi/agent/skills/alnvee/mcp/SKILL.md"
-test -d "$TMP_HOME_DOCKER/.pi/agent/prompts"
-test ! -e "$TMP_HOME_DOCKER/.pi/skills"
-test ! -e "$TMP_HOME_DOCKER/.pi/prompts"
-test -f "$TMP_HOME_DOCKER/.config/mcp/mcp.json"
-grep -F 'EXISTING_SERVER' "$TMP_HOME_DOCKER/.config/mcp/mcp.json" >/dev/null
-grep -F 'MCP_DOCKER' "$TMP_HOME_DOCKER/.config/mcp/mcp.json" >/dev/null
-grep -F 'mcp-agent' "$TMP_HOME_DOCKER/.pi/agent/SYSTEM.md" >/dev/null
-test -f "$TMP_HOME_DOCKER/.docker/mcp/catalogs/notebooklm.yaml"
-test -f "$TMP_HOME_DOCKER/.docker/mcp/registry.d/notebooklm.yaml"
-! grep -F 'notebooklm-auth:' "$TMP_HOME_DOCKER/.docker/mcp/catalogs/notebooklm.yaml" >/dev/null
-! grep -F 'notebooklm-auth:' "$TMP_HOME_DOCKER/.docker/mcp/registry.d/notebooklm.yaml" >/dev/null
-
-python -m py_compile "$ROOT_DIR/docker/notebooklm-mcp/server.py"
-
-grep -Fx "build --tag notebooklm/notebooklm-mcp:latest --file $ROOT_DIR/docker/notebooklm-mcp/Dockerfile $ROOT_DIR" "$DOCKER_LOG" >/dev/null
-! grep -F "notebooklm-auth:latest" "$DOCKER_LOG" >/dev/null
-grep -Fx 'mcp profile server ls --filter profile=default' "$DOCKER_LOG" >/dev/null
-grep -Fx "mcp profile server add default --server file://$TMP_HOME_DOCKER/.docker/mcp/catalogs/notebooklm.yaml" "$DOCKER_LOG" >/dev/null
-grep -F 'catalogs/notebooklm.yaml' "$TMP_HOME_DOCKER/.config/mcp/mcp.json" >/dev/null
-grep -F 'registry.d/notebooklm.yaml' "$TMP_HOME_DOCKER/.config/mcp/mcp.json" >/dev/null
-
-grep -Fx 'uninstall -g @mariozechner/pi-coding-agent @earendil-works/pi-coding-agent pi-coding-agent' "$NPM_LOG_DOCKER" >/dev/null
-grep -Fx 'install -g @earendil-works/pi-coding-agent' "$NPM_LOG_DOCKER" >/dev/null
-
-for package in $expected_packages; do
-  grep -Fx "uninstall $package" "$PI_LOG_DOCKER" >/dev/null
-  grep -Fx "install $package" "$PI_LOG_DOCKER" >/dev/null
-done
-
-last_uninstall=$(grep -n '^uninstall ' "$PI_LOG_DOCKER" | tail -1 | cut -d: -f1)
-first_install=$(grep -n '^install ' "$PI_LOG_DOCKER" | head -1 | cut -d: -f1)
-test "$last_uninstall" -lt "$first_install"
-
-grep -Fx 'update' "$PI_LOG_DOCKER" >/dev/null
+test -f "$TMP_HOME/.pi/agent/skills/mattpocock/engineering/tdd/SKILL.md"
 
 printf '%s\n' "Smoke test passed"

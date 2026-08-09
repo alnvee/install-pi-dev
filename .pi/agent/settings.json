@@ -22,7 +22,7 @@
     "~/.pi/agent/skills/mattpocock/productivity"
   ],
   "lastChangelogVersion": "0.74.0",
-  "defaultProvider": "openrouter",
-  "defaultModel": "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "defaultProvider": "deepseek",
+  "defaultModel": "deepseek-v4-flash",
   "defaultThinkingLevel": "xhigh"
 }

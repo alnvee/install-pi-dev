@@ -4,8 +4,13 @@ node_modules/
 npm/
 .env
 .env.*
+!.env.example
 
 # Local / pi bundle runtime artifacts
+
+# Python
+__pycache__/
+*.pyc
 
 # Logs
 *.log

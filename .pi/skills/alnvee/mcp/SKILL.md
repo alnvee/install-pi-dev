@@ -21,21 +21,6 @@ In practice:
 - If needed, run `docker mcp tools inspect <tool-name> --format json` (and update `./tool-schemas.cache.json`).
 - Then immediately run `docker mcp tools call <tool-name> <key=value arguments>` and base your answer on the tool output.
 
-## NotebookLM fast path (this repo)
-
-If the task is to summarize the _active_ NotebookLM notebook (e.g. “summarize the notebook”, “get notebook summary”, “what’s in the notebook”), prefer `notebook_describe`:
-
-1. Read `NOTEBOOKLM_NOTEBOOK_URL` from the workspace `.env`.
-2. Extract `notebook_id` as the final path segment (the part after `/notebook/`).
-3. Call:
-   `docker mcp tools call notebook_describe notebook_id=<notebook_id>`
-4. If the call fails due to auth/session, first call:
-   `docker mcp tools call notebooklm_login mode=check`
-   and only fall back to `mode=login` when you need to re-authenticate; use `mode=manual` if the browser-based flow is unavailable.
-   Then retry the `notebook_describe` call once.
-
-(If the task is about sources instead of the whole notebook, use `source_describe` analogously.)
-
 ## Discovery Flow
 
 1. Check which Docker MCP profile is active.
@@ -90,4 +75,4 @@ If the task is to summarize the _active_ NotebookLM notebook (e.g. “summarize 
 
 - Read the workspace `.env` for workspace-specific values.
 - Read workspace docs or config files if the tool depends on local setup.
-- Do not assume the same notebook, auth, or profile details carry across workspaces.
+- Do not assume the same auth or profile details carry across workspaces.

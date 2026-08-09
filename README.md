@@ -4,26 +4,13 @@ This repository contains the `.pi` bundle and an installer that:
 
 1. Removes the existing Pi CLI and the current `~/.pi` directory.
 2. Installs `@earendil-works/pi-coding-agent` globally with `npm`.
-3. Copies the repository `.pi` folder to `~/.pi`.
-4. Uninstalls and reinstalls the packages listed in `.pi/agent/settings.json` with `pi`, then runs `pi update` so the latest versions are fetched on each run.
-5. Optionally, when run with `--with-docker` or `PI_INSTALL_DOCKER_COMPONENTS=1`, builds the NotebookLM Docker images, writes the Docker MCP overlay files, copies the MCP gateway config, and attaches NotebookLM to the active Docker MCP profile.
-6. Switches the installed `.pi/agent/SYSTEM.md` to the Docker-aware variant only for Docker-enabled installs; the base install keeps a system prompt without the `mcp-agent` reference.
+3. Refreshes the bundled mattpocock skills from [`github.com/mattpocock/skills`](https://github.com/mattpocock/skills) so the install always uses the latest upstream versions. On failure (offline, no curl/tar) the bundled copies are kept.
+4. Copies the repository `.pi` folder to `~/.pi`.
+5. Uninstalls and reinstalls the packages listed in `.pi/agent/settings.json` with `pi`, then runs `pi update` so the latest versions are fetched on each run.
 
-When you run the script from a local checkout, it uses the checkout’s `.pi` directory. When you stream it with `curl | sh`, it downloads the current `main` branch archive from `alnvee/install-pi-dev` so changes to `.pi` are picked up on every install.
+When you run the script from a local checkout, it uses the checkout’s `.pi` directory — so the mattpocock refresh updates the repo’s `.pi/skills/mattpocock` first (you can commit the refreshed copies), then installs from there. When you stream it with `curl | sh`, it downloads the current `main` branch archive from `alnvee/install-pi-dev` so changes to `.pi` are picked up on every install.
 
-Docker is optional for the base install. Use `--with-docker` only if you want the NotebookLM Docker images and MCP gateway overlay.
-
-The installer assumes the Docker MCP profile is named `default`. If your local Docker setup uses a different profile, set `PI_DOCKER_MCP_PROFILE` before running the installer.
-
-## Workspace Contract
-
-This repo expects a workspace-local `./.env` file with `NOTEBOOKLM_NOTEBOOK_URL` set for the active project notebook. The notebook URL is intentionally not hardcoded in repo docs because it can differ per workspace.
-
-The source bundle keeps the MCP skill at [`.pi/skills/alnvee/mcp/SKILL.md`](/home/aln/Projects/install-pi-dev/.pi/skills/alnvee/mcp/SKILL.md). During install, the script mirrors skills into the user-scope path `~/.pi/agent/skills/...` so the installed layout matches the Pi subagent docs.
-
-The same normalization is applied for prompt templates: source prompts under `.pi/prompts` are mirrored into `~/.pi/agent/prompts/...` during install so prompt-template packages use the documented path.
-
-If you are creating a new workspace, copy [`.env.example`](/home/aln/Projects/install-pi-dev/.env.example) to `./.env` and set the notebook URL before trying to query NotebookLM.
+The mattpocock refresh can be pointed elsewhere with `PI_MATTPOCOCK_SKILLS_REPO` / `PI_MATTPOCOCK_SKILLS_BRANCH`.
 
 ## Usage
 
@@ -33,28 +20,10 @@ From a local checkout:
 sh ./install.sh
 ```
 
-To include the NotebookLM Docker/MCP pieces as part of the install:
-
-```sh
-sh ./install.sh --with-docker
-```
-
 From the published installer:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/alnvee/install-pi-dev/main/install.sh | sh
-```
-
-To include the NotebookLM Docker/MCP pieces from the published installer:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/alnvee/install-pi-dev/main/install.sh | sh -s -- --with-docker
-```
-
-You can also enable the same Docker install path with an environment variable:
-
-```sh
-PI_INSTALL_DOCKER_COMPONENTS=1 curl -fsSL https://raw.githubusercontent.com/alnvee/install-pi-dev/main/install.sh | sh
 ```
 
 To verify the install flow without touching your real home directory:
@@ -63,26 +32,11 @@ To verify the install flow without touching your real home directory:
 ./scripts/smoke-test.sh
 ```
 
-To smoke-test the published installer in a throwaway home directory without Docker:
+To smoke-test the published installer in a throwaway home directory:
 
 ```sh
 TMP_HOME="$(mktemp -d)"
 HOME="$TMP_HOME" curl -fsSL https://raw.githubusercontent.com/alnvee/install-pi-dev/main/install.sh | sh
 ```
 
-To smoke-test the published installer with Docker enabled:
-
-```sh
-TMP_HOME="$(mktemp -d)"
-HOME="$TMP_HOME" PI_INSTALL_DOCKER_COMPONENTS=1 curl -fsSL https://raw.githubusercontent.com/alnvee/install-pi-dev/main/install.sh | sh
-```
-
-After a Docker-enabled install, verify the NotebookLM server is attached and visible with:
-
-```sh
-docker mcp profile server ls --filter profile=default | rg notebooklm
-docker mcp tools ls --format human | rg 'notebook_describe|notebooklm_login|source_describe'
-```
-
-The NotebookLM service is packaged as a single Docker image and registered with the same gateway that backs `MCP_DOCKER`. The `notebooklm_login` helper is now bundled into that same server, so auth checks and re-authentication run on the unified `notebooklm-mcp` image. Start with `notebooklm_login mode=check` to confirm your session; use `mode=login` only when you really need to re-authenticate, and `mode=manual` if the browser-based login path is unavailable.
-
+The smoke test runs the installer against a throwaway `HOME` with mock `npm`/`pi` binaries and asserts the resulting `~/.pi` layout, the package install sequence, and that runtime artifacts (sessions, npm dir) are not shipped.
