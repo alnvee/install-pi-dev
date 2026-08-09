@@ -8,8 +8,6 @@ REPO_BRANCH=${PI_INSTALL_REPO_BRANCH:-main}
 DRY_RUN=${PI_INSTALL_DRY_RUN:-0}
 SKIP_CHECKSUM=${PI_INSTALL_SKIP_CHECKSUM:-0}
 FORCE=${PI_INSTALL_FORCE:-0}
-MATTPOCOCK_SKILLS_REPO=${PI_MATTPOCOCK_SKILLS_REPO:-https://github.com/mattpocock/skills}
-MATTPOCOCK_SKILLS_BRANCH=${PI_MATTPOCOCK_SKILLS_BRANCH:-main}
 
 # Expected SHA256 of the release tarball (update on each release)
 # Generate with: curl -sL <archive_url> | sha256sum
@@ -45,14 +43,10 @@ run() {
 }
 
 TMP_DIR=
-SKILLS_TMP_DIR=
 
 cleanup() {
 	if [ -n "$TMP_DIR" ]; then
 		run rm -rf "$TMP_DIR"
-	fi
-	if [ -n "$SKILLS_TMP_DIR" ]; then
-		run rm -rf "$SKILLS_TMP_DIR"
 	fi
 }
 
@@ -204,49 +198,6 @@ sync_dir_into_agent_scope() {
 	fi
 }
 
-refresh_mattpocock_skills() {
-	source_root=$1
-	target_dir="$source_root/.pi/skills/mattpocock"
-
-	if [ "$DRY_RUN" -eq 1 ]; then
-		dry_log "Would refresh mattpocock skills into $target_dir from $MATTPOCOCK_SKILLS_REPO ($MATTPOCOCK_SKILLS_BRANCH)"
-		return 0
-	fi
-
-	if ! command -v curl >/dev/null 2>&1 || ! command -v tar >/dev/null 2>&1; then
-		log "Warning: curl/tar not available; keeping bundled mattpocock skills"
-		return 0
-	fi
-
-	log "Refreshing mattpocock skills from $MATTPOCOCK_SKILLS_REPO ($MATTPOCOCK_SKILLS_BRANCH)"
-
-	SKILLS_TMP_DIR=$(mktemp -d)
-	archive_path="$SKILLS_TMP_DIR/mattpocock-skills.tar.gz"
-	archive_url="$MATTPOCOCK_SKILLS_REPO/archive/refs/heads/$MATTPOCOCK_SKILLS_BRANCH.tar.gz"
-
-	if ! curl -fsSL "$archive_url" -o "$archive_path"; then
-		log "Warning: failed to download mattpocock skills; keeping bundled copies"
-		SKILLS_TMP_DIR=
-		return 0
-	fi
-
-	tar -xzf "$archive_path" -C "$SKILLS_TMP_DIR"
-
-	upstream_dir=$(find "$SKILLS_TMP_DIR" -mindepth 1 -maxdepth 1 -type d | head -n 1)
-	[ -n "$upstream_dir" ] || die "unable to locate extracted mattpocock skills"
-
-	rm -rf "$target_dir"
-	mkdir -p "$target_dir"
-	for bucket in engineering productivity misc personal; do
-		if [ -d "$upstream_dir/skills/$bucket" ]; then
-			cp -R "$upstream_dir/skills/$bucket" "$target_dir/"
-		fi
-	done
-
-	rm -rf "$SKILLS_TMP_DIR"
-	SKILLS_TMP_DIR=
-}
-
 print_plan() {
 	cat <<EOF
 Installation plan:
@@ -259,13 +210,12 @@ Steps:
   1. Uninstall existing Pi CLI packages (@mariozechner/pi-coding-agent, @earendil-works/pi-coding-agent, pi-coding-agent)
   2. Remove existing $HOME/.pi directory
   3. Install Pi CLI (@earendil-works/pi-coding-agent)
-  4. Refresh mattpocock skills from $MATTPOCOCK_SKILLS_REPO ($MATTPOCOCK_SKILLS_BRANCH)
-  5. Copy .pi bundle to $HOME/.pi
-  6. Verify subagent layout
-  7. Sync skills to $HOME/.pi/agent/skills
-  8. Sync prompts to $HOME/.pi/agent/prompts
-  9. Install Pi packages from settings.json
-  10. Refresh Pi packages (pi update)
+  4. Copy .pi bundle to $HOME/.pi
+  5. Verify subagent layout
+  6. Sync skills to $HOME/.pi/agent/skills
+  7. Sync prompts to $HOME/.pi/agent/prompts
+  8. Install Pi packages from settings.json
+  9. Refresh Pi packages (pi update)
 EOF
 }
 
@@ -303,8 +253,6 @@ Environment variables:
   PI_INSTALL_SKIP_CHECKSUM           1 to skip checksum verification
   PI_INSTALL_FORCE                   1 to proceed even if another pi instance is running
   PI_INSTALL_RELEASE_SHA256          Expected SHA256 of release tarball
-  PI_MATTPOCOCK_SKILLS_REPO          GitHub repo for mattpocock skills (default: https://github.com/mattpocock/skills)
-  PI_MATTPOCOCK_SKILLS_BRANCH        Branch to fetch for mattpocock skills (default: main)
 
 Examples:
   # Local install
@@ -336,8 +284,6 @@ EOF
 	settings_path="$source_dir/.pi/agent/settings.json"
 
 	[ -f "$settings_path" ] || die "missing .pi/agent/settings.json in $source_dir"
-
-	refresh_mattpocock_skills "$source_dir"
 
 	log "Removing existing Pi CLI package"
 	run npm uninstall -g @mariozechner/pi-coding-agent @earendil-works/pi-coding-agent pi-coding-agent >/dev/null 2>&1 || true

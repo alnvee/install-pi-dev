@@ -4,18 +4,15 @@ This repository contains the `.pi` bundle and an installer that:
 
 1. Removes the existing Pi CLI and the current `~/.pi` directory.
 2. Installs `@earendil-works/pi-coding-agent` globally with `npm`.
-3. Refreshes the bundled mattpocock skills from [`github.com/mattpocock/skills`](https://github.com/mattpocock/skills) so the install always uses the latest upstream versions. On failure (offline, no curl/tar) the bundled copies are kept.
-4. Copies the repository `.pi` folder to `~/.pi`.
-5. Uninstalls and reinstalls the packages listed in `.pi/agent/settings.json` with `pi`, then runs `pi update` so the latest versions are fetched on each run.
+3. Copies the repository `.pi` folder to `~/.pi`.
+4. Uninstalls and reinstalls the packages listed in `.pi/agent/settings.json` with `pi`, then runs `pi update` so the latest versions are fetched on each run.
 
-When you run the script from a local checkout, it uses the checkout’s `.pi` directory — so the mattpocock refresh updates the repo’s `.pi/skills/mattpocock` first (you can commit the refreshed copies), then installs from there. When you stream it with `curl | sh`, it downloads the current `main` branch archive from `alnvee/install-pi-dev` so changes to `.pi` are picked up on every install.
-
-The mattpocock refresh can be pointed elsewhere with `PI_MATTPOCOCK_SKILLS_REPO` / `PI_MATTPOCOCK_SKILLS_BRANCH`.
+When you run the script from a local checkout, it uses the checkout’s `.pi` directory as-is and installs from there. When you stream it with `curl | sh`, it downloads the current `main` branch archive from `alnvee/install-pi-dev` so changes to `.pi` are picked up on every install.
 
 ## Prerequisites
 
 - **Node.js + npm** (Node 18+ recommended; `pi` is an npm package). If `npm install -g` fails with an EACCES permission error, use a Node version manager (e.g. [nvm](https://github.com/nvm-sh/nvm)) or set a user-level npm prefix instead of running with `sudo`.
-- **`curl`** and **`tar`** — required for the remote download path (streamed installs and the mattpocock skills refresh). If they are missing, the installer falls back to the bundled skills.
+- **`curl`** and **`tar`** — required for the remote download path (streamed installs). Local installs from a checkout do not need them.
 - **`sha256sum`** — only needed when `PI_INSTALL_RELEASE_SHA256` is set.
 - **`pgrep`** — used by the running-instance safety check (see below). The installer skips the check if `pgrep` is unavailable.
 
@@ -102,6 +99,5 @@ HOME="$TMP_HOME" curl -fsSL https://raw.githubusercontent.com/alnvee/install-pi-
 ## Troubleshooting
 
 - **`npm install -g` fails with EACCES** — your npm global prefix is not user-writable. Install Node via nvm (or set a user prefix with `npm config set prefix ~/.npm-global` and add it to `PATH`) instead of using `sudo`.
-- **No network / skills refresh fails** — the installer logs a warning and keeps the bundled mattpocock skills, so the install still completes.
 - **`pi` does not start after a successful install** — check `node --version` / `npm --version`; if the global `pi` binary exists but errors, reinstall with `npm install -g @earendil-works/pi-coding-agent`.
 - **Installer refuses to run** — another `pi` instance is running. Close it (or all instances), then retry; use `--force` only if you accept that its `~/.pi` state will be destroyed.

@@ -8,6 +8,8 @@ Stay in your lane: if the task is primarily planning, research, review, or decis
 
 Prefer test-driven development when it fits the task: write or update tests first, then implement the smallest change needed to make them pass.
 
+Test precedence: an explicit TDD/test-first request wins — run the full red-green loop. When ponytail mode is active and the work is implicit (no test-first request), ponytail's minimal-check rule applies instead: one assert-based check, no frameworks, YAGNI on tests.
+
 You are context aware. Keep track of what you have already learned, avoid redundant searching, and use the workspace structure and recent edits to guide the next step.
 
 Process large outputs (logs, test runs, git history, API responses) with context-mode tools (ctx_batch_execute / ctx_execute / ctx_execute_file) and return summaries — don't read raw bytes into the conversation. Index reference docs (ctx_index) and recall via ctx_search.

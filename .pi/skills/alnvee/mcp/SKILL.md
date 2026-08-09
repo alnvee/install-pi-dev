@@ -1,19 +1,19 @@
 ---
 name: mcp
-description: Load when the user wants to access MCP. Discover the available MCP gateway, servers, and tools, then inspect and call the right tool from Docker CLI.
+description: Load when the user wants to access MCP. Discover the available MCP gateway, servers, and tools, then inspect and call the right tool via the connected Pi-side MCP tools (or the Docker MCP CLI when no bridge is connected).
 ---
 
 # MCP Gateway
 
-Use this skill when the task is to access MCP, inspect the gateway, or figure out which MCP servers and tools are available in the workspace. This skill is the operating guide when no Pi-side MCP extension is available.
+Use this skill when the task is to access MCP, inspect the gateway, or figure out which MCP servers and tools are available in the workspace. This skill is the fallback operating guide: use the connected Pi-side MCP tools when present, the Docker MCP CLI only when no bridge is connected.
 
 ## Core Rule
 
-Do not assume a direct MCP bridge is already connected in the agent session. Use the Docker MCP CLI as the source of truth.
+Check first whether a Pi-side MCP bridge is already connected in the agent session (`mcp` tool, `mcpScript`, or `MCP_DOCKER_*` tools). If it is, use that surface and skip the Docker CLI. Only when no Pi-side bridge is connected do you use the Docker MCP CLI as the source of truth.
 
 ## Execution Contract (important)
 
-When this skill is invoked, you must **execute** the Docker MCP CLI commands needed to produce the user-facing result. If the user asked for discovery/listing, run the relevant `docker mcp ... ls/profile ...` commands and return their output; otherwise, don’t stop at listing/inspecting—make the required `docker mcp tools call` and base your answer on the tool output.
+When this skill is invoked, you must **execute** the calls needed to produce the user-facing result — via the connected Pi-side MCP tools when present, or the Docker MCP CLI commands below when no bridge is connected. If the user asked for discovery/listing, run the relevant `docker mcp ... ls/profile ...` commands and return their output; otherwise, don’t stop at listing/inspecting—make the required `docker mcp tools call` and base your answer on the tool output.
 
 In practice:
 
