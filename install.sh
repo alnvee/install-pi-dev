@@ -7,6 +7,7 @@ REPO_URL=${PI_INSTALL_REPO_URL:-https://github.com/alnvee/install-pi-dev}
 REPO_BRANCH=${PI_INSTALL_REPO_BRANCH:-main}
 DRY_RUN=${PI_INSTALL_DRY_RUN:-0}
 SKIP_CHECKSUM=${PI_INSTALL_SKIP_CHECKSUM:-0}
+FORCE=${PI_INSTALL_FORCE:-0}
 MATTPOCOCK_SKILLS_REPO=${PI_MATTPOCOCK_SKILLS_REPO:-https://github.com/mattpocock/skills}
 MATTPOCOCK_SKILLS_BRANCH=${PI_MATTPOCOCK_SKILLS_BRANCH:-main}
 
@@ -57,6 +58,20 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
+# Refuse to wipe $HOME/.pi while another pi instance is running -- the install
+# replaces that directory, destroying the running instance's session state.
+check_no_running_pi() {
+	[ "$FORCE" -eq 1 ] && return 0
+
+	command -v pgrep >/dev/null 2>&1 || return 0
+
+	pids=$(pgrep -x pi 2>/dev/null || true)
+	[ -n "$pids" ] || return 0
+
+	# shellcheck disable=SC2086
+	die "running pi instance(s) detected (PID: $(printf '%s ' $pids)); install replaces \$HOME/.pi which destroys their session state -- close them, or set PI_INSTALL_FORCE=1 (or pass --force) to override"
+}
+
 verify_checksum() {
 	file=$1
 	expected=$2
@@ -86,16 +101,18 @@ download_source_dir() {
 	archive_path="$TMP_DIR/pi-source.tar.gz"
 	archive_url="$REPO_URL/archive/refs/heads/$REPO_BRANCH.tar.gz"
 
-	dry_log "Downloading Pi sources from $archive_url"
+	# stdout is the function's return channel (captured by resolve_source_dir), so
+	# progress messages go to stderr.
+	dry_log "Downloading Pi sources from $archive_url" >&2
 	run curl -fsSL "$archive_url" -o "$archive_path"
 
 	if [ "$SKIP_CHECKSUM" -eq 0 ]; then
-		verify_checksum "$archive_path" "$RELEASE_TARBALL_SHA256"
+		verify_checksum "$archive_path" "$RELEASE_TARBALL_SHA256" >&2
 	else
-		log "Skipping checksum verification (PI_INSTALL_SKIP_CHECKSUM=1)"
+		log "Skipping checksum verification (PI_INSTALL_SKIP_CHECKSUM=1)" >&2
 	fi
 
-	dry_log "Extracting archive to $TMP_DIR"
+	dry_log "Extracting archive to $TMP_DIR" >&2
 	run tar -xzf "$archive_path" -C "$TMP_DIR"
 
 	source_dir=$(find "$TMP_DIR" -mindepth 1 -maxdepth 1 -type d | head -n 1)
@@ -137,7 +154,7 @@ install_pi_packages() {
 	command -v pi >/dev/null 2>&1 || die "pi command not found after installation"
 
 	packages=$(packages_from_settings "$settings_path")
-	[ -n "$packages" ] || return
+	[ -n "$packages" ] || return 0
 
 	(
 		cd "$HOME"
@@ -172,31 +189,18 @@ verify_subagent_layout() {
 	# agent/agents and agent/chains are created by pi packages during 'pi install'
 }
 
-sync_skills_into_agent_scope() {
+sync_dir_into_agent_scope() {
 	install_root=$1
-	legacy_skills_dir="$install_root/skills"
-	agent_skills_dir="$install_root/agent/skills"
+	dir_name=$2
+	legacy_dir="$install_root/$dir_name"
+	agent_dir="$install_root/agent/$dir_name"
 
-	dry_log "Syncing skills: $legacy_skills_dir -> $agent_skills_dir"
-	run mkdir -p "$agent_skills_dir"
+	dry_log "Syncing $dir_name: $legacy_dir -> $agent_dir"
+	run mkdir -p "$agent_dir"
 
-	if [ -d "$legacy_skills_dir" ]; then
-		run cp -R "$legacy_skills_dir/." "$agent_skills_dir/"
-		run rm -rf "$legacy_skills_dir"
-	fi
-}
-
-sync_prompts_into_agent_scope() {
-	install_root=$1
-	legacy_prompts_dir="$install_root/prompts"
-	agent_prompts_dir="$install_root/agent/prompts"
-
-	dry_log "Syncing prompts: $legacy_prompts_dir -> $agent_prompts_dir"
-	run mkdir -p "$agent_prompts_dir"
-
-	if [ -d "$legacy_prompts_dir" ]; then
-		run cp -R "$legacy_prompts_dir/." "$agent_prompts_dir/"
-		run rm -rf "$legacy_prompts_dir"
+	if [ -d "$legacy_dir" ]; then
+		run cp -R "$legacy_dir/." "$agent_dir/"
+		run rm -rf "$legacy_dir"
 	fi
 }
 
@@ -268,6 +272,7 @@ EOF
 main() {
 	require_cmd npm
 	require_cmd node
+	require_cmd mktemp
 
 	while [ "$#" -gt 0 ]; do
 		case "$1" in
@@ -277,6 +282,9 @@ main() {
 		--skip-checksum)
 			SKIP_CHECKSUM=1
 			;;
+		--force)
+			FORCE=1
+			;;
 		-h | --help)
 			cat <<EOF
 Usage: sh ./install.sh [OPTIONS]
@@ -284,6 +292,7 @@ Usage: sh ./install.sh [OPTIONS]
 Options:
   --dry-run, --plan                  Show installation plan without executing
   --skip-checksum                    Skip tarball checksum verification
+  --force                            Proceed even if another pi instance is running
   -h, --help                         Show this help
 
 Environment variables:
@@ -292,6 +301,7 @@ Environment variables:
   PI_INSTALL_SOURCE_DIR              Local .pi directory to use instead of downloading
   PI_INSTALL_DRY_RUN                 1 to enable dry-run mode
   PI_INSTALL_SKIP_CHECKSUM           1 to skip checksum verification
+  PI_INSTALL_FORCE                   1 to proceed even if another pi instance is running
   PI_INSTALL_RELEASE_SHA256          Expected SHA256 of release tarball
   PI_MATTPOCOCK_SKILLS_REPO          GitHub repo for mattpocock skills (default: https://github.com/mattpocock/skills)
   PI_MATTPOCOCK_SKILLS_BRANCH        Branch to fetch for mattpocock skills (default: main)
@@ -320,6 +330,8 @@ EOF
 		return 0
 	fi
 
+	check_no_running_pi
+
 	source_dir=$(resolve_source_dir)
 	settings_path="$source_dir/.pi/agent/settings.json"
 
@@ -346,11 +358,17 @@ EOF
 	run rm -rf "$target_dir/sessions" "$target_dir/npm"
 
 	verify_subagent_layout "$target_dir"
-	sync_skills_into_agent_scope "$target_dir"
-	sync_prompts_into_agent_scope "$target_dir"
+	sync_dir_into_agent_scope "$target_dir" skills
+	sync_dir_into_agent_scope "$target_dir" prompts
 
 	install_pi_packages "$settings_path"
 	refresh_pi_packages
+
+	log "Verifying Pi CLI installation"
+	if ! pi_version=$(pi --version 2>&1); then
+		die "global install succeeded but 'pi --version' failed; check your node/npm installation, or reinstall @earendil-works/pi-coding-agent manually"
+	fi
+	log "Pi CLI version: $pi_version"
 
 	log "Pi installation complete"
 }
