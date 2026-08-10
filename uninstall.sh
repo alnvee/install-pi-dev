@@ -92,6 +92,13 @@ uninstall_global_cli() {
 	run npm uninstall -g $PI_PACKAGE $LEGACY_PI_PACKAGES >/dev/null 2>&1 || true
 }
 
+teardown_notebooklm() {
+	if [ -f "$HOME/.pi/scripts/setup-notebooklm.sh" ]; then
+		dry_log "Tearing down NotebookLM backend (removes its MCP server from the Docker gateway)"
+		run sh "$HOME/.pi/scripts/setup-notebooklm.sh" --remove >/dev/null 2>&1 || true
+	fi
+}
+
 remove_pi_home() {
 	if [ -d "$HOME/.pi" ]; then
 		dry_log "Removing $HOME/.pi"
@@ -109,7 +116,8 @@ Uninstall plan:
 Steps:
   1. Uninstall Pi packages from $HOME/.pi/agent/settings.json (pi uninstall)
   2. Uninstall global Pi CLI (npm uninstall -g $PI_PACKAGE $LEGACY_PI_PACKAGES)
-  3. Remove $HOME/.pi
+  3. Tear down the NotebookLM backend (remove its MCP server from the Docker gateway, if installed)
+  4. Remove $HOME/.pi
 EOF
 }
 
@@ -120,7 +128,8 @@ Usage: sh ./uninstall.sh [OPTIONS]
 Removes the Pi CLI and configuration installed by install.sh:
   1. Runs 'pi uninstall' for every package listed in $HOME/.pi/agent/settings.json
   2. Runs 'npm uninstall -g' for the Pi CLI (@earendil-works/pi-coding-agent and legacy names)
-  3. Removes the $HOME/.pi directory
+  3. Tear down the NotebookLM backend (remove its MCP server from the Docker gateway, if installed)
+  4. Removes the $HOME/.pi directory
 
 Options:
   --dry-run, --plan                  Show the uninstall plan without executing
@@ -183,6 +192,7 @@ main() {
 	fi
 
 	uninstall_global_cli
+	teardown_notebooklm
 	remove_pi_home
 
 	log "Pi uninstallation complete"

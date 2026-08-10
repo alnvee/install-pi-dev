@@ -57,7 +57,9 @@ PATH="$TMP_BIN:$PATH" HOME="$TMP_HOME" PI_INSTALL_SOURCE_DIR="$SOURCE_DIR" \
 test -f "$TMP_HOME/.pi/agent/settings.json"
 test ! -e "$TMP_HOME/.pi/settings.json"
 test -f "$TMP_HOME/.pi/agent/SYSTEM.md"
+test -f "$TMP_HOME/.pi/agent/extensions/nlm.ts"
 test -f "$TMP_HOME/.pi/agent/skills/alnvee/mcp/SKILL.md"
+test -f "$TMP_HOME/.pi/scripts/setup-notebooklm.sh"
 test ! -e "$TMP_HOME/.pi/agent/skills/mattpocock"
 test -d "$TMP_HOME/.pi/agent/prompts"
 test ! -e "$TMP_HOME/.pi/skills"
@@ -184,5 +186,38 @@ PATH="$GUARD_BIN:$TMP_BIN:$PATH" HOME="$GUARD_HOME" PI_INSTALL_SOURCE_DIR="$SOUR
 	PI_INSTALL_FORCE=1 \
 	sh "$ROOT_DIR/install.sh" >/dev/null
 test -f "$GUARD_HOME/.pi/agent/settings.json"
+
+# 8) PI_INSTALL_NLM=0 excludes the whole NotebookLM (/nlm) surface — extension,
+#    setup script, skill, and its skills-index entry — while the rest of the
+#    bundle installs normally. The --no-nlm flag does the same.
+NLM_HOME="$TMP_DIR/nlmhome"
+mkdir -p "$NLM_HOME"
+PATH="$TMP_BIN:$PATH" HOME="$NLM_HOME" PI_INSTALL_SOURCE_DIR="$SOURCE_DIR" \
+	PI_INSTALL_NLM=0 \
+	sh "$ROOT_DIR/install.sh" >/dev/null
+test -f "$NLM_HOME/.pi/agent/settings.json"
+test ! -e "$NLM_HOME/.pi/agent/extensions/nlm.ts"
+test ! -e "$NLM_HOME/.pi/scripts/setup-notebooklm.sh"
+test ! -e "$NLM_HOME/.pi/agent/skills/alnvee/notebooklm"
+if grep -q 'notebooklm' "$NLM_HOME/.pi/agent/skills/alnvee/README.md" 2>/dev/null; then
+	echo "expected notebooklm entry removed from skills index" >&2
+	exit 1
+fi
+
+NLM_FLAG_HOME="$TMP_DIR/nlmflaghome"
+mkdir -p "$NLM_FLAG_HOME"
+PATH="$TMP_BIN:$PATH" HOME="$NLM_FLAG_HOME" PI_INSTALL_SOURCE_DIR="$SOURCE_DIR" \
+	sh "$ROOT_DIR/install.sh" --no-nlm >/dev/null
+test ! -e "$NLM_FLAG_HOME/.pi/agent/extensions/nlm.ts"
+test ! -e "$NLM_FLAG_HOME/.pi/scripts/setup-notebooklm.sh"
+
+# 9) PI_INSTALL_NOTEBOOKLM=1 with /nlm excluded is a hard error (the explicit
+#    backend request conflicts with the exclusion).
+if PATH="$TMP_BIN:$PATH" HOME="$NLM_HOME" PI_INSTALL_SOURCE_DIR="$SOURCE_DIR" \
+	PI_INSTALL_NLM=0 PI_INSTALL_NOTEBOOKLM=1 \
+	sh "$ROOT_DIR/install.sh" >/dev/null 2>&1; then
+	echo "expected PI_INSTALL_NOTEBOOKLM=1 with PI_INSTALL_NLM=0 to fail" >&2
+	exit 1
+fi
 
 printf '%s\n' "Smoke test passed"

@@ -8,6 +8,9 @@ REPO_BRANCH=${PI_INSTALL_REPO_BRANCH:-main}
 DRY_RUN=${PI_INSTALL_DRY_RUN:-0}
 SKIP_CHECKSUM=${PI_INSTALL_SKIP_CHECKSUM:-0}
 FORCE=${PI_INSTALL_FORCE:-0}
+# 1 to ship the NotebookLM (/nlm) extension, skill, and setup script (default);
+# 0 excludes the whole /nlm surface from the installed bundle.
+NLM_ENABLED=${PI_INSTALL_NLM:-1}
 
 # Expected SHA256 of the release tarball (update on each release)
 # Generate with: curl -sL <archive_url> | sha256sum
@@ -173,6 +176,18 @@ refresh_pi_packages() {
 	run pi update
 }
 
+setup_notebooklm() {
+	[ "${PI_INSTALL_NOTEBOOKLM:-0}" = "1" ] || return 0
+	[ "$NLM_ENABLED" -eq 1 ] || die "PI_INSTALL_NOTEBOOKLM=1 conflicts with PI_INSTALL_NLM=0 (or --no-nlm): the /nlm surface is excluded from this install"
+
+	if [ -f "$source_dir/.pi/scripts/setup-notebooklm.sh" ]; then
+		dry_log "Setting up NotebookLM research backend (PI_INSTALL_NOTEBOOKLM=1)"
+		run sh "$source_dir/.pi/scripts/setup-notebooklm.sh"
+	else
+		die "PI_INSTALL_NOTEBOOKLM=1 but .pi/scripts/setup-notebooklm.sh not found in the source tree"
+	fi
+}
+
 verify_subagent_layout() {
 	install_root=$1
 
@@ -205,6 +220,7 @@ Installation plan:
   Target: $HOME/.pi
   Dry-run mode: $([ "$DRY_RUN" -eq 1 ] && echo "enabled" || echo "disabled")
   Checksum verification: $([ "$SKIP_CHECKSUM" -eq 0 ] && echo "enabled" || echo "disabled")
+  NotebookLM (/nlm): $([ "$NLM_ENABLED" -eq 1 ] && echo "included" || echo "excluded")
 
 Steps:
   1. Uninstall existing Pi CLI packages (@mariozechner/pi-coding-agent, @earendil-works/pi-coding-agent, pi-coding-agent)
@@ -216,6 +232,7 @@ Steps:
   7. Sync prompts to $HOME/.pi/agent/prompts
   8. Install Pi packages from settings.json
   9. Refresh Pi packages (pi update)
+  10. Set up NotebookLM research backend (only when /nlm included and PI_INSTALL_NOTEBOOKLM=1)
 EOF
 }
 
@@ -235,6 +252,9 @@ main() {
 		--force)
 			FORCE=1
 			;;
+		--no-nlm)
+			NLM_ENABLED=0
+			;;
 		-h | --help)
 			cat <<EOF
 Usage: sh ./install.sh [OPTIONS]
@@ -243,6 +263,7 @@ Options:
   --dry-run, --plan                  Show installation plan without executing
   --skip-checksum                    Skip tarball checksum verification
   --force                            Proceed even if another pi instance is running
+  --no-nlm                           Exclude the NotebookLM (/nlm) extension, skill, and setup script
   -h, --help                         Show this help
 
 Environment variables:
@@ -252,6 +273,7 @@ Environment variables:
   PI_INSTALL_DRY_RUN                 1 to enable dry-run mode
   PI_INSTALL_SKIP_CHECKSUM           1 to skip checksum verification
   PI_INSTALL_FORCE                   1 to proceed even if another pi instance is running
+  PI_INSTALL_NLM                     0 to exclude the NotebookLM (/nlm) extension, skill, and setup script (default: 1)
   PI_INSTALL_RELEASE_SHA256          Expected SHA256 of release tarball
 
 Examples:
@@ -303,12 +325,27 @@ EOF
 	# (they are gitignored, so local checkouts would otherwise copy them).
 	run rm -rf "$target_dir/sessions" "$target_dir/npm"
 
+	if [ "$NLM_ENABLED" -eq 0 ]; then
+		log "Excluding NotebookLM (/nlm) from the bundle (PI_INSTALL_NLM=0 / --no-nlm)"
+		run rm -rf "$target_dir/agent/extensions/nlm.ts" \
+			"$target_dir/scripts/setup-notebooklm.sh" \
+			"$target_dir/skills/alnvee/notebooklm"
+		# Drop the notebooklm entry from the skills index shipped in the bundle.
+		index_file="$target_dir/skills/alnvee/README.md"
+		if [ -f "$index_file" ]; then
+			run grep -v 'notebooklm' "$index_file" >"$index_file.nlm-tmp"
+			run mv "$index_file.nlm-tmp" "$index_file"
+		fi
+	fi
+
 	verify_subagent_layout "$target_dir"
 	sync_dir_into_agent_scope "$target_dir" skills
 	sync_dir_into_agent_scope "$target_dir" prompts
 
 	install_pi_packages "$settings_path"
 	refresh_pi_packages
+
+	setup_notebooklm
 
 	log "Verifying Pi CLI installation"
 	if ! pi_version=$(pi --version 2>&1); then

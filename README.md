@@ -68,6 +68,30 @@ Like the installer, uninstall refuses to run while another `pi` instance is runn
 
 All installer behavior is configurable via environment variables — see [`.env.example`](.env.example) for the full list with defaults, including `PI_INSTALL_REPO_URL`, `PI_INSTALL_SOURCE_DIR`, `PI_INSTALL_DRY_RUN`, `PI_INSTALL_FORCE`, and `PI_INSTALL_RELEASE_SHA256`.
 
+## NotebookLM (Gemini Notebook) research backend
+
+A **`/nlm` extension ships with every install** — the NotebookLM surface inside pi. Type `/nlm` for a menu (select/change your current notebook — remembered for queries and source adds — auth status/login, list notebooks, ask your sources, add a source, doctor) or `/nlm <args>` to run the `nlm` CLI directly. Asking a question surfaces **only the answer** — citation metadata is hidden (the MCP tool still returns it). The extension is also the wrapper that installs the NotebookLM MCP server into the **Docker MCP gateway**: `/nlm` → “Install MCP server in Docker” (or `/nlm setup`) sets it up, and “Remove MCP server from Docker” (`/nlm remove`) tears it down — no reinstall needed.
+
+The bundle also ships a skill (`.pi/skills/alnvee/notebooklm/SKILL.md`) that lets the agent query your research corpus — list notebooks, add sources, and ask grounded questions with citations.
+
+There is **no official public API for consumer NotebookLM**; this integration uses the unofficial `notebooklm-mcp-cli` (`nlm` CLI + `notebooklm-mcp` server, reverse-engineered BOQ RPC, cookie auth). It can break when Google changes the product and is a ToS gray area — acceptable for a personal research setup, not for shared/production deployments. The official Gemini Notebook **Enterprise** API exists but currently lacks a chat/query endpoint, so it cannot do agent Q&A yet.
+
+To set the backend up during install (requires Docker MCP gateway + a Google account):
+
+```sh
+PI_INSTALL_NOTEBOOKLM=1 sh ./install.sh
+```
+
+Or on demand from inside pi: `/nlm` → “Install MCP server in Docker”. The same installer can be run directly on an existing install:
+
+```sh
+sh ~/.pi/scripts/setup-notebooklm.sh
+```
+
+The `/nlm` extension, its skill, and the setup script ship by default. To exclude the entire `/nlm` surface from an install, set `PI_INSTALL_NLM=0` (or pass `--no-nlm`) — the extension, skill, and `setup-notebooklm.sh` are then left out, and the backend is never set up (an explicit `PI_INSTALL_NOTEBOOKLM=1` with `/nlm` excluded is an error).
+
+What it does: installs `notebooklm-mcp-cli` (uv/pipx/pip), provisions auth via `nlm login` (browser sign-in; headless via `nlm login --manual --file cookies.txt`), runs the `notebooklm-mcp` HTTP server on `127.0.0.1:9420` as a systemd user service, and registers it in the Docker MCP gateway as a `remote` server. Auth state lives in `~/.notebooklm-mcp-cli` — outside `~/.pi`, so it survives reinstalls. The auth cookies are a durable full-account Google credential: prefer a dedicated account, and keep `~/.notebooklm-mcp-cli` private.
+
 ## Security note
 
 Streaming a script with `curl | sh` runs whatever the URL currently serves, so it is only safe against a repository/network you trust. For stronger integrity, pin the release tarball with `PI_INSTALL_RELEASE_SHA256`:
