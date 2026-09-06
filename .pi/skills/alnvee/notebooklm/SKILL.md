@@ -1,6 +1,6 @@
 ---
 name: notebooklm
-description: Load when the user's research lives in Google NotebookLM (now Gemini Notebook) and the agent must query it — answer questions from notebook sources, add sources, list notebooks, run the research loop. Triggers: "ask the notebook", "check my research", "notebooklm", "gemini notebook", "research in my sources", "what does my notebook say", "query my sources".
+description: "Load when the user's research lives in Google NotebookLM (now Gemini Notebook) and the agent must query it — answer questions from notebook sources, add sources, list notebooks, run the research loop. Triggers: \"ask the notebook\", \"check my research\", \"notebooklm\", \"gemini notebook\", \"research in my sources\", \"what does my notebook say\", \"query my sources\"."
 ---
 
 # NotebookLM (Gemini Notebook) — research backend
