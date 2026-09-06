@@ -239,6 +239,44 @@ refresh_herdr_extension() {
 	run mv -f "$tmp_extension" "$target_file"
 }
 
+# After shipping the Herdr Pi integration, make sure it matches the herdr that
+# is actually installed here: that herdr may be newer than the latest stable
+# release the refresh resolved (e.g. preview channel), or the refresh fell back
+# to the bundled copy. Any mismatch is repaired with herdr's own installer and
+# only ever warned about -- herdr is optional, so this never fails the install.
+verify_herdr_integration() {
+	[ "$HERDR_REFRESH" -eq 1 ] || return 0
+
+	command -v herdr >/dev/null 2>&1 || {
+		log "herdr not found; skipping Herdr Pi integration verification"
+		return 0
+	}
+
+	pi_line=$(herdr integration status 2>/dev/null | grep '^pi:' || true)
+	case "$pi_line" in
+	*current*)
+		log "Herdr Pi integration matches the installed herdr: ${pi_line#*: }"
+		return 0
+		;;
+	esac
+
+	log "Herdr Pi integration out of sync with the installed herdr (${pi_line:-no status output}); running 'herdr integration install pi'"
+	if [ "$DRY_RUN" -eq 0 ]; then
+		# herdr exits 0 even when it cannot install, so trust the re-check below.
+		herdr integration install pi >/dev/null 2>&1 || true
+	fi
+
+	pi_line=$(herdr integration status 2>/dev/null | grep '^pi:' || true)
+	case "$pi_line" in
+	*current*)
+		log "Herdr Pi integration matches the installed herdr: ${pi_line#*: }"
+		;;
+	*)
+		log "Warning: Herdr Pi integration still not current (${pi_line:-no status output}); run 'herdr integration install pi' after herdr updates"
+		;;
+	esac
+}
+
 verify_subagent_layout() {
 	install_root=$1
 
@@ -284,7 +322,7 @@ Steps:
   8. Install Pi packages from settings.json
   9. Refresh Pi packages (pi update)
   10. Set up NotebookLM research backend (only when /nlm included and PI_INSTALL_NOTEBOOKLM=1)
-  11. Refresh Herdr Pi integration from Herdr's latest GitHub release (falls back to the bundled copy)
+  11. Refresh Herdr Pi integration from Herdr's latest GitHub release (falls back to the bundled copy), then verify it matches a locally installed herdr
 EOF
 }
 
@@ -393,6 +431,7 @@ EOF
 	fi
 
 	refresh_herdr_extension "$target_dir"
+	verify_herdr_integration
 
 	verify_subagent_layout "$target_dir"
 	sync_dir_into_agent_scope "$target_dir" skills
