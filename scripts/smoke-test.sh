@@ -49,6 +49,11 @@ exit 1
 EOF
 chmod +x "$TMP_BIN/pgrep"
 
+# Keep every default install hermetic: the Herdr refresh would hit GitHub,
+# which the smoke environment must not depend on. Dedicated tests below
+# exercise the refresh via a file:// override.
+export PI_INSTALL_HERDR=0
+
 # Local install from a checkout: the bundle is copied as-is (no upstream
 # skills refresh), so the bundled skills land in the agent scope unchanged.
 PATH="$TMP_BIN:$PATH" HOME="$TMP_HOME" PI_INSTALL_SOURCE_DIR="$SOURCE_DIR" \
@@ -58,7 +63,9 @@ test -f "$TMP_HOME/.pi/agent/settings.json"
 test ! -e "$TMP_HOME/.pi/settings.json"
 test -f "$TMP_HOME/.pi/agent/SYSTEM.md"
 test -f "$TMP_HOME/.pi/agent/extensions/nlm.ts"
+test -f "$TMP_HOME/.pi/agent/extensions/herdr-agent-state.ts"
 test -f "$TMP_HOME/.pi/agent/skills/alnvee/mcp/SKILL.md"
+test -f "$TMP_HOME/.pi/agent/skills/alnvee/herdr/SKILL.md"
 test -f "$TMP_HOME/.pi/scripts/setup-notebooklm.sh"
 test ! -e "$TMP_HOME/.pi/agent/skills/mattpocock"
 test -d "$TMP_HOME/.pi/agent/prompts"
@@ -219,5 +226,25 @@ if PATH="$TMP_BIN:$PATH" HOME="$NLM_HOME" PI_INSTALL_SOURCE_DIR="$SOURCE_DIR" \
 	echo "expected PI_INSTALL_NOTEBOOKLM=1 with PI_INSTALL_NLM=0 to fail" >&2
 	exit 1
 fi
+
+# 10) PI_INSTALL_HERDR=1 with PI_INSTALL_HERDR_EXTENSION_URL refreshes the
+#     Herdr integration from the given URL (file:// here) after the bundle copy.
+printf '%s\n' '// fixture' '// HERDR_INTEGRATION_ID=pi' '// HERDR_INTEGRATION_VERSION=99' >"$TMP_DIR/herdr-fixture.ts"
+HERDR_HOME="$TMP_DIR/herdrhome"
+mkdir -p "$HERDR_HOME"
+PATH="$TMP_BIN:$PATH" HOME="$HERDR_HOME" PI_INSTALL_SOURCE_DIR="$SOURCE_DIR" \
+	PI_INSTALL_HERDR=1 PI_INSTALL_HERDR_EXTENSION_URL="file://$TMP_DIR/herdr-fixture.ts" \
+	sh "$ROOT_DIR/install.sh" >/dev/null
+grep -q 'HERDR_INTEGRATION_VERSION=99' "$HERDR_HOME/.pi/agent/extensions/herdr-agent-state.ts"
+
+# 11) A failing refresh (unreachable URL) warns and keeps the bundled copy
+#     instead of failing the install.
+FAIL_HERDR_HOME="$TMP_DIR/failherdrhome"
+mkdir -p "$FAIL_HERDR_HOME"
+PATH="$TMP_BIN:$PATH" HOME="$FAIL_HERDR_HOME" PI_INSTALL_SOURCE_DIR="$SOURCE_DIR" \
+	PI_INSTALL_HERDR=1 PI_INSTALL_HERDR_EXTENSION_URL="file://$TMP_DIR/does-not-exist.ts" \
+	sh "$ROOT_DIR/install.sh" >/dev/null
+cmp -s "$FAIL_HERDR_HOME/.pi/agent/extensions/herdr-agent-state.ts" \
+	"$ROOT_DIR/.pi/agent/extensions/herdr-agent-state.ts"
 
 printf '%s\n' "Smoke test passed"

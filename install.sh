@@ -11,6 +11,12 @@ FORCE=${PI_INSTALL_FORCE:-0}
 # 1 to ship the NotebookLM (/nlm) extension, skill, and setup script (default);
 # 0 excludes the whole /nlm surface from the installed bundle.
 NLM_ENABLED=${PI_INSTALL_NLM:-1}
+# 1 to refresh the Herdr Pi integration from Herdr's latest GitHub release on
+# every install (default); 0 keeps the bundled copy only.
+HERDR_REFRESH=${PI_INSTALL_HERDR:-1}
+# Full URL of a herdr-agent-state.ts to install instead of resolving Herdr's
+# latest GitHub release (pin a version, use a mirror, or test locally).
+HERDR_EXTENSION_URL=${PI_INSTALL_HERDR_EXTENSION_URL:-}
 
 # Expected SHA256 of the release tarball (update on each release)
 # Generate with: curl -sL <archive_url> | sha256sum
@@ -188,6 +194,51 @@ setup_notebooklm() {
 	fi
 }
 
+# Overwrite the bundled Herdr Pi integration with the one from Herdr's latest
+# GitHub release (or from $PI_INSTALL_HERDR_EXTENSION_URL when set). Any failure
+# only warns -- the bundled copy already in place stays as the fallback.
+refresh_herdr_extension() {
+	install_root=$1
+	[ "$HERDR_REFRESH" -eq 1 ] || return 0
+
+	command -v curl >/dev/null 2>&1 || {
+		log "Warning: curl not found; keeping the bundled herdr-agent-state.ts"
+		return 0
+	}
+
+	extension_url="$HERDR_EXTENSION_URL"
+	if [ -z "$extension_url" ]; then
+		latest_tag=$(curl -fsSL https://api.github.com/repos/herdrdev/herdr/releases/latest |
+			node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(JSON.parse(d).tag_name||"")}catch{process.exit(1)}})') || latest_tag=
+		if [ -z "$latest_tag" ]; then
+			log "Warning: could not resolve the latest herdr release; keeping the bundled herdr-agent-state.ts"
+			return 0
+		fi
+		extension_url="https://raw.githubusercontent.com/herdrdev/herdr/$latest_tag/src/integration/assets/pi/herdr-agent-state.ts"
+	fi
+
+	tmp_extension=$(mktemp)
+	if ! curl -fsSL "$extension_url" -o "$tmp_extension"; then
+		rm -f "$tmp_extension"
+		log "Warning: failed to download $extension_url; keeping the bundled herdr-agent-state.ts"
+		return 0
+	fi
+
+	if ! grep -q 'HERDR_INTEGRATION_ID=pi' "$tmp_extension"; then
+		rm -f "$tmp_extension"
+		log "Warning: $extension_url is not a herdr Pi integration; keeping the bundled herdr-agent-state.ts"
+		return 0
+	fi
+
+	integration_version=$(grep -o 'HERDR_INTEGRATION_VERSION=[0-9]*' "$tmp_extension" | head -n 1 | cut -d= -f2)
+	[ -n "$integration_version" ] || integration_version=unknown
+
+	target_file="$install_root/agent/extensions/herdr-agent-state.ts"
+	dry_log "Refreshing herdr Pi integration (v$integration_version) from $extension_url"
+	run mkdir -p "$(dirname "$target_file")"
+	run mv -f "$tmp_extension" "$target_file"
+}
+
 verify_subagent_layout() {
 	install_root=$1
 
@@ -233,6 +284,7 @@ Steps:
   8. Install Pi packages from settings.json
   9. Refresh Pi packages (pi update)
   10. Set up NotebookLM research backend (only when /nlm included and PI_INSTALL_NOTEBOOKLM=1)
+  11. Refresh Herdr Pi integration from Herdr's latest GitHub release (falls back to the bundled copy)
 EOF
 }
 
@@ -274,6 +326,8 @@ Environment variables:
   PI_INSTALL_SKIP_CHECKSUM           1 to skip checksum verification
   PI_INSTALL_FORCE                   1 to proceed even if another pi instance is running
   PI_INSTALL_NLM                     0 to exclude the NotebookLM (/nlm) extension, skill, and setup script (default: 1)
+  PI_INSTALL_HERDR                   0 to skip refreshing the Herdr Pi integration from Herdr's latest GitHub release (default: 1)
+  PI_INSTALL_HERDR_EXTENSION_URL     Install herdr-agent-state.ts from this URL instead of resolving the latest release
   PI_INSTALL_RELEASE_SHA256          Expected SHA256 of release tarball
 
 Examples:
@@ -337,6 +391,8 @@ EOF
 			run mv "$index_file.nlm-tmp" "$index_file"
 		fi
 	fi
+
+	refresh_herdr_extension "$target_dir"
 
 	verify_subagent_layout "$target_dir"
 	sync_dir_into_agent_scope "$target_dir" skills

@@ -1,6 +1,5 @@
 {
   "packages": [
-    "npm:@tintinweb/pi-subagents",
     "npm:@dietrichgebert/ponytail",
     "npm:@plannotator/pi-extension",
     "npm:context-mode",

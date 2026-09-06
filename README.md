@@ -92,6 +92,19 @@ The `/nlm` extension, its skill, and the setup script ship by default. To exclud
 
 What it does: installs `notebooklm-mcp-cli` (uv/pipx/pip), provisions auth via `nlm login` (browser sign-in; headless via `nlm login --manual --file cookies.txt`), runs the `notebooklm-mcp` HTTP server on `127.0.0.1:9420` as a systemd user service, and registers it in the Docker MCP gateway as a `remote` server. Auth state lives in `~/.notebooklm-mcp-cli` — outside `~/.pi`, so it survives reinstalls. The auth cookies are a durable full-account Google credential: prefer a dedicated account, and keep `~/.notebooklm-mcp-cli` private.
 
+## Herdr (agent multiplexer) integration
+
+Every install ships Herdr's Pi lifecycle extension at `~/.pi/agent/extensions/herdr-agent-state.ts` (bundled at `.pi/agent/extensions/herdr-agent-state.ts`) and, by default, **refreshes it from Herdr's latest GitHub release**: it resolves the newest Herdr release tag, downloads its `src/integration/assets/pi/herdr-agent-state.ts`, and overwrites the bundled copy. `herdr integration status` then reports `pi: installed` with the current integration version.
+
+The extension is inert unless pi runs inside a Herdr pane (`HERDR_ENV=1`); there it reports `idle`/`working`/`blocked` state and the native session id over Herdr's socket, so Herdr can track the pane and resume the session after a restart. Install Herdr from [herdr.dev](https://herdr.dev) to use it.
+
+The refresh never fails the install: if Herdr's release cannot be resolved or downloaded (no network, no `curl`, GitHub unreachable), the installer warns and keeps the bundled copy. Controls:
+
+- `PI_INSTALL_HERDR=0` — skip the refresh; install only the bundled copy.
+- `PI_INSTALL_HERDR_EXTENSION_URL=<url>` — install from that URL instead of resolving the latest release (pin a version or use a mirror).
+
+`herdr integration install pi` still overwrites the file with the installed Herdr's own copy at any time. On machines without Herdr the extension file is a harmless no-op.
+
 ## Security note
 
 Streaming a script with `curl | sh` runs whatever the URL currently serves, so it is only safe against a repository/network you trust. For stronger integrity, pin the release tarball with `PI_INSTALL_RELEASE_SHA256`:
