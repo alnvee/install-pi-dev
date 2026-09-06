@@ -85,9 +85,9 @@ herdr agent focus <name>            # jump the UI to it
 herdr pane close w1:p2
 ```
 
-Reading vs settling: `agent start` returns at interactive-ready, which can precede task completion — small argv tasks can finish seconds after spawn, and `idle` is the resting state both before and after a turn. To collect a final answer, `herdr agent wait <name> --until idle` first, then read; reading straight after `start` may only show boot output. For task handoff use `herdr agent prompt <name> <text> --wait`, which blocks until the agent settles (idle/done/blocked by default; from rest it requires an observed state change within 5s or returns `agent_prompt_stalled` — tune with `--until` / `--timeout`). Treat the `agent_status` in the `prompt --wait` result as the settled confirmation before reading.
+Reading vs settling: `agent start` returns at interactive-ready, which can precede task completion — small argv tasks can finish seconds after spawn, and `idle` is the resting state both before and after a turn. Reading straight after `start` may only show boot output. Do not treat `agent wait` as a completion signal: it returns on the first idle observation, which can predate the work. For tasks that write a file, treat the committed artifact (§7.1) or done-marker (§7.2) as completion instead. For task handoff use `herdr agent prompt <name> <text> --wait`, which blocks until the agent settles (idle/done/blocked by default; from rest it requires an observed state change within 5s or returns `agent_prompt_stalled` — tune with `--until` / `--timeout`). Treat the `agent_status` in the `prompt --wait` result as the settled confirmation before reading.
 
-Collecting output: `agent read` returns the pane's terminal scrollback, where a column-rendering agent UI soft-wraps long lines and long answers push earlier content out of the default window. Prefer `herdr agent read <name> --source recent-unwrapped` for clean, unwrapped lines (`--lines N` bounds the window). If the answer is long and only a summary is needed, ask the agent to re-print it compactly or write it to a file in the workspace, then read the file.
+Collecting output: the file-handoff protocol in §7 is the default for anything the main agent must actually consume — clean text, no truncation. `herdr agent read` returns the pane's terminal scrollback, where a column-rendering agent UI soft-wraps long lines mid-word and long answers push earlier content out of the default window; use it only to glance at progress or see where a stalled worker is. If you do read the screen, `--source recent-unwrapped` is the cleanest (`--lines N` bounds the window); for long answers, ask the agent to re-print compactly or write a file (§7).
 
 Reusing an agent vs spawning fresh: renaming or prompting an idle agent continues its **same session** — its prior turns stay in context. Reuse when continuity with the previous task helps. If a new task needs fresh, untainted context, **always spawn a new agent** (`herdr pane split` + `agent start`); never reuse an agent carrying unrelated history for a task that must not inherit it.
 
@@ -97,7 +97,66 @@ Running pi inside herdr manually is also fine: open a pane, run `pi`. Herdr dete
 
 Inside a Herdr pane, agent processes get `HERDR_ENV=1`, `HERDR_SOCKET_PATH`, and `HERDR_PANE_ID`. Do not clear/override them — the Pi integration extension uses them as its activation gate and transport.
 
-## 7. Surviving pi reinstalls and herdr updates
+## 7. File handoff: worker writes, main reads
+
+Screen reads are a fallback: scrollback is soft-wrapped mid-word, interleaved with boot noise, and truncatable by the agent's collapsed UI. When the main agent must actually consume a worker's result, make the **file the state machine**. Two contracts, chosen by worker type:
+
+- **§7.1 Pi workers (default)** — the `herdr-handoff` extension hooks the worker's `agent_settled` runtime event and commits its artifact. The main side collects it with the `herdr_worker_result` tool. Completion is decided by the runtime event, never by trusting the LLM to write a marker last.
+- **§7.2 Non-pi workers or no extension** — the manual marker contract (worker writes + EOF marker, main polls).
+
+### 7.1 Pi workers: hook-committed artifact + `herdr_worker_result` tool
+
+1. **Spawn contract** — split a pane, note its id (`herdr pane list`), and include the artifact path in the worker prompt — the worker only ever writes the `.tmp`; the commit is automatic:
+
+   ```text
+   Write your result to: /tmp/herdr/<pane-id>/out.md.tmp
+   It is committed to out.md automatically when your turn settles — do not write out.md or out.md.done yourself.
+   ```
+
+   The pane-id path is required: the commit hook runs in that pane's process and uses its own `HERDR_PANE_ID`.
+
+2. **Collect via the tool, right after `agent start`** — call `herdr_worker_result` (agent name or pane id):
+
+   - Resolves the name over the herdr socket (works from any herdr pane), waits for the committed revision, returns the artifact bounded by `maxChars` (default 20000).
+   - `baselineSeq` default 0 fits a **fresh** pane (first commit, seq 1, satisfies immediately). Reusing a pane across tasks? Pass the `seq` from the previous result so a stale artifact isn't returned as new work.
+   - Settled-but-no-artifact and timeout come back as explicit errors with the failure ladder below.
+   - The tool registers at pi session boot. If it isn't callable in your session (resumed/`/reload`ed sessions can miss extension tools), use §7.2 or orchestrate over `out.md.done` with bash.
+
+3. **Failure ladder** (no artifact / timeout) — `herdr agent explain <name>` first (blocked on a permission prompt? `herdr agent prompt <name> "continue" --wait`). Then `agent read` only to see where it stalled. Forensics last: the session file in `agent_session.value`.
+
+4. **Teardown** — `herdr pane close <pane-id>`; `rm -rf /tmp/herdr/<pane-id>` once ingested (if you don't want the artifact).
+
+### 7.2 Non-pi workers or no extension: manual marker
+
+Claude/codex/gemini workers cannot run the pi commit hook, so they get the marker contract:
+
+1. **Spawn contract** — include in the worker prompt:
+
+   ```text
+   Write your result to: /tmp/herdr/<task-name>.md
+   The file's LAST line must be exactly: <!-- herdr-done -->
+   Write it in ONE pass. If you fail partway, write what you have plus "PARTIAL" before the marker.
+   ```
+
+   Absolute, task-derived path (no collisions across repeated spawns); the EOF marker distinguishes "done" from "mid-write" — a file without the marker must not be trusted.
+
+2. **Wait on the file, not the agent state** — `agent wait --until idle` is not a completion signal (`idle` is the resting state both before and after a turn; fast argv tasks can finish with no visible state transition). Poll for the marker instead:
+
+   ```sh
+   for i in $(seq 1 90); do
+     [ -f /tmp/herdr/<task-name>.md ] && \
+       [ "$(tail -n1 /tmp/herdr/<task-name>.md)" = "<!-- herdr-done -->" ] && { echo READY; exit 0; }
+     sleep 2
+   done; echo TIMEOUT
+   ```
+
+3. **Read through pi, sized to the file** — small report (< ~10 KB): read it directly (full fidelity). Large/unknown output: process it in a sandbox (`ctx_execute_file` or equivalent) — verify the marker, extract only what you need, never slurp raw bytes into context.
+
+4. **Timeout ladder** — `herdr agent explain <name>` first (blocked on a prompt?). Then `herdr agent prompt <name> "continue" --wait`. Then `agent read` only to see where it stalled. Forensics last: the session file in `agent_session.value`.
+
+5. **Teardown** — `herdr pane close <pane-id>`; `rm` the result file once ingested (if you don't want the artifact).
+
+## 8. Surviving pi reinstalls and herdr updates
 
 A pi reinstall wipes `~/.pi` — including this skill and the Herdr Pi integration (`~/.pi/agent/extensions/herdr-agent-state.ts`) — then re-ships both from the install bundle: the repo's `.pi/skills/...` is synced to `~/.pi/agent/skills/...`, and the bundled integration is refreshed from Herdr's **latest stable** GitHub release (`releases/latest`; any failure only warns and keeps the bundled copy). The repo copy of this skill is the durable source — edit it there; the `~/.pi` copy is a regenerated artifact.
 
